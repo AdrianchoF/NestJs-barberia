@@ -1,37 +1,59 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Cliente } from 'src/clientes/entities/cliente.entity';
-import { RegisterAuthDto } from './dto/register-auth.dto';
-import { LoginAuthDto } from './dto/login-auth.dto';
+import { User } from './entities/user.entity';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(Cliente)
-    private clienteRepository: Repository<Cliente>,
-    private jwtService: JwtService
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+    private jwtService: JwtService,
   ) {}
 
-  async register(dto: RegisterAuthDto) {
-    const hash = await bcrypt.hash(dto.password, 10);
-    const nuevo = this.clienteRepository.create({ ...dto, password: hash });
-    const cliente = await this.clienteRepository.save(nuevo);
-    delete cliente.password;
-    return cliente;
+  async register(registerDto: RegisterDto): Promise<User> {
+    const { email, password, name, apellido } = registerDto;
+    
+    const existingUser = await this.usersRepository.findOne({ where: { email } });
+    if (existingUser) {
+      throw new BadRequestException('Email already exists');
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = this.usersRepository.create({
+      email,
+      password: hashedPassword,
+      name,
+      apellido
+    });
+
+    return this.usersRepository.save(user);
   }
 
-  async login(dto: LoginAuthDto) {
-    const cliente = await this.clienteRepository.findOneBy({ email: dto.email });
-    if (!cliente) throw new UnauthorizedException('Usuario no encontrado');
+  async login(loginDto: LoginDto): Promise<{ accessToken: string }> {
+    const { email, password } = loginDto;
+    
+    const user = await this.usersRepository.findOne({ where: { email } });
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    const match = await bcrypt.compare(dto.password, cliente.password);
-    if (!match) throw new UnauthorizedException('Contraseña incorrecta');
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    const payload = { id: cliente.id, email: cliente.email };
-    const token = this.jwtService.sign(payload);
-    return { token, cliente: { id: cliente.id, nombre: cliente.nombre, email: cliente.email } };
+    const payload = { sub: user.id, email: user.email };
+    const accessToken = await this.jwtService.signAsync(payload);
+
+    return { accessToken };
+  }
+
+  async findUserById(id: number) {
+    return this.usersRepository.findOne({ where: { id } });
   }
 }
