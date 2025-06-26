@@ -12,13 +12,16 @@ export class User {
   password: string;
 
   @Column({ length: 100 })
-    name: string;
+  nombre: string;
 
   @Column({ length: 100 })
-    apellido: string
+  apellido: string;
 
   @Column({ type: 'varchar', length: 15})
-    telefono: number;
+  telefono: number;
+
+  @Column({ default: true })
+  activo?: boolean;
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
