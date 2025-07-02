@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { CreateUserDto } from './dto/create-user.dto'
 
 @Injectable()
 export class AuthService {
@@ -53,6 +54,26 @@ export class AuthService {
     const accessToken = await this.jwtService.signAsync(payload);
 
     return { accessToken };
+  }
+
+  async create(CreateUserDto: CreateUserDto): Promise<User[]> {
+    // Verificar si el email ya existe
+    const existeEmail = await this.usersRepository.findOne({
+      where: { email: CreateUserDto.email },
+    });
+  
+    if (existeEmail) {
+      throw new ConflictException('Ya existe un cliente con este email');
+    }
+  
+    const user = this.usersRepository.create(CreateUserDto);
+    return await this.usersRepository.save(user); 
+  }
+
+  async findAll(): Promise<User[]> {
+    return await this.usersRepository.find({
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findUserById(id: number) {
