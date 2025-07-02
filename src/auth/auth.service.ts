@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -56,7 +56,7 @@ export class AuthService {
     return { accessToken };
   }
 
-  async create(CreateUserDto: CreateUserDto): Promise<User[]> {
+  async create(CreateUserDto: CreateUserDto): Promise<User> {
     // Verificar si el email ya existe
     const existeEmail = await this.usersRepository.findOne({
       where: { email: CreateUserDto.email },
@@ -66,7 +66,10 @@ export class AuthService {
       throw new ConflictException('Ya existe un cliente con este email');
     }
   
-    const user = this.usersRepository.create(CreateUserDto);
+    const user = this.usersRepository.create({
+      ...CreateUserDto,
+      telefono: CreateUserDto.telefono ? Number(CreateUserDto.telefono): undefined,
+    });
     return await this.usersRepository.save(user); 
   }
 
@@ -75,6 +78,53 @@ export class AuthService {
       order: { createdAt: 'DESC' },
     });
   }
+
+  async findOne(id: number): Promise<User> {
+    const cliente = await this.usersRepository.findOne({
+      where: { id },
+    });
+  
+    if (!cliente) {
+      throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
+    }
+  
+    return cliente;
+  }
+
+  /* async update(id: number, updateClienteDto: UpdateClienteDto): Promise<User> {
+    const cliente = await this.findOne(id);
+      // Si se está actualizando el email, verificar que no exista
+    if (updateClienteDto.email && updateClienteDto.email !== cliente.email) {
+      const existeEmail = await this.clienteRepository.findOne({
+        where: { email: updateClienteDto.email },
+      });
+  
+      if (existeEmail) {
+        throw new ConflictException('Ya existe un cliente con este email');
+      }
+    }
+  
+      Object.assign(cliente, updateClienteDto);
+      return await this.clienteRepository.save(cliente);
+  } */
+
+  async remove(id: number) {
+    const user = await this.findOne(id);
+    await this.usersRepository.remove(user);
+  }
+
+  /* async findByEmail(email: string) {
+    return await this.usersRepository.findOne({
+      where: { email },
+    });
+  }
+  
+  async findActivos(): Promise<User[]> {
+    return await this.usersRepository.find({
+      where: { activo: true },
+      order: { nombre: 'ASC' },
+    });
+  } */
 
   async findUserById(id: number) {
     return this.usersRepository.findOne({ where: { id } });

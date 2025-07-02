@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ClientesModule } from './clientes/clientes.module';
 import { AuthModule } from './auth/auth.module';
+import { ServicioModule } from './servicio/servicio.module';
 
 @Module({
   imports: [
@@ -19,8 +19,8 @@ import { AuthModule } from './auth/auth.module';
       autoLoadEntities: true,
       synchronize: true, // Solo en desarrollo
     }),
-    ClientesModule,
-    AuthModule
+    AuthModule,
+    ServicioModule
   ],
 })
 export class AppModule {}
