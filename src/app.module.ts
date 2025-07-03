@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { ServicioModule } from './servicio/servicio.module';
+import { HorarioBarberoModule } from './horario-barbero/horario-barbero.module';
 
 @Module({
   imports: [
@@ -20,7 +21,8 @@ import { ServicioModule } from './servicio/servicio.module';
       synchronize: true, // Solo en desarrollo
     }),
     AuthModule,
-    ServicioModule
+    ServicioModule,
+    HorarioBarberoModule
   ],
 })
 export class AppModule {}

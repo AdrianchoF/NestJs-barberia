@@ -1,15 +1,15 @@
 import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
+export enum Role {
+  ADMINISTRADOR = 'administrador',
+  BARBERO = 'barbero',
+  CLIENTE = 'cliente',
+}
+
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @Column({ unique: true })
-  email: string;
-
-  @Column()
-  password: string;
 
   @Column({ length: 100 })
   nombre: string;
@@ -17,8 +17,21 @@ export class User {
   @Column({ length: 100 })
   apellido: string;
 
+  @Column({ unique: true })
+  email: string;
+
+  @Column()
+  password: string;
+
   @Column({ type: 'varchar', length: 15})
   telefono: number;
+
+  @Column({
+    type: 'enum',
+    enum: Role,
+    default: Role.CLIENTE
+  })
+  role:Role;
 
   @Column({ default: true })
   activo?: boolean;

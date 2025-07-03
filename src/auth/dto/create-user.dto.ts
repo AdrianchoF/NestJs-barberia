@@ -1,4 +1,5 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Length, IsDateString, IsBoolean } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Length, IsDateString, IsBoolean, IsEnum } from 'class-validator';
+import { Role } from '../entities/user.entity';
 
 export class CreateUserDto {
     @IsNotEmpty({ message: 'El nombre es obligatorio' })
@@ -15,14 +16,19 @@ export class CreateUserDto {
     @IsEmail({}, { message: 'Debe ser un email válido' })
     email: string;
 
+    @IsNotEmpty({ message: 'La contraseña es obligatoria' })
+    @IsString({ message: 'La contraseña debe ser una cadena de texto' })
+    @Length(6, 100, { message: 'La contraseña debe tener entre 6 y 100 caracteres' })
+    password: string;
+
     @IsOptional()
     @IsString({ message: 'El teléfono debe ser una cadena de texto' })
     @Length(10, 20, { message: 'El teléfono debe tener entre 10 y 20 caracteres' })
     telefono?: string;
 
     @IsOptional()
-    @IsDateString({}, { message: 'La fecha debe tener formato válido (YYYY-MM-DD)' })
-    fechaNacimiento?: string;
+    @IsEnum(Role, { message: 'El rol debe ser CLIENTE, BARBERO o ADMINISTRADOR' })
+    role: Role;
 
     @IsOptional()
     @IsBoolean({ message: 'El estado activo debe ser verdadero o falso' })
