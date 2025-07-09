@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Length, IsDateString, IsBoolean, IsEnum } from 'class-validator';
+/* import { IsEmail, IsNotEmpty, IsOptional, IsString, Length, IsDateString, IsBoolean, IsEnum } from 'class-validator';
 import { Role } from '../entities/user.entity';
 
 export class CreateUserDto {
@@ -33,4 +33,4 @@ export class CreateUserDto {
     @IsOptional()
     @IsBoolean({ message: 'El estado activo debe ser verdadero o falso' })
     activo?: boolean;
-}
+} */

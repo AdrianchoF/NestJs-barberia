@@ -6,7 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { CreateUserDto } from './dto/create-user.dto'
+//import { CreateUserDto } from './dto/create-user.dto'
 
 @Injectable()
 export class AuthService {
@@ -17,11 +17,11 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto): Promise<User> {
-    const { email, password, nombre, apellido, telefono, activo } = registerDto;
+    const { email, password, nombre, apellido, telefono, role } = registerDto;
     
     const existingUser = await this.usersRepository.findOne({ where: { email } });
     if (existingUser) {
-      throw new BadRequestException('Email already exists');
+      throw new BadRequestException('Este Email ya existe');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -31,10 +31,11 @@ export class AuthService {
       nombre,
       apellido,
       telefono,
+      role,
       activo: true
     });
 
-    return this.usersRepository.save(user);
+    return await this.usersRepository.save(user);
   }
 
   async login(loginDto: LoginDto): Promise<{ accessToken: string }> {
@@ -56,7 +57,7 @@ export class AuthService {
     return { accessToken };
   }
 
-  async create(CreateUserDto: CreateUserDto): Promise<User> {
+  /* async create(CreateUserDto: CreateUserDto): Promise<User> {
     // Verificar si el email ya existe
     const existeEmail = await this.usersRepository.findOne({
       where: { email: CreateUserDto.email },
@@ -68,10 +69,10 @@ export class AuthService {
   
     const user = this.usersRepository.create({
       ...CreateUserDto,
-      telefono: CreateUserDto.telefono ? Number(CreateUserDto.telefono): undefined,
+      telefono: CreateUserDto.telefono ? String(CreateUserDto.telefono): undefined,
     });
     return await this.usersRepository.save(user); 
-  }
+  } */
 
   async findAll(): Promise<User[]> {
     return await this.usersRepository.find({
@@ -111,6 +112,7 @@ export class AuthService {
   async remove(id: number) {
     const user = await this.findOne(id);
     await this.usersRepository.remove(user);
+    return `Usuario con id ${id} eliminado satisfactoriamente`;
   }
 
   /* async findByEmail(email: string) {

@@ -16,11 +16,8 @@ export class HorarioBarbero {
     @PrimaryGeneratedColumn({ name : 'Id_HorarioBarbero' })
     id: number;
 
-    @Column({
-        type: 'enum',
-        enum: DiaSemana,
-    })
-    diasSemana: DiaSemana
+    @Column('simple-array')
+    diasSemana: string[];
 
     @Column({ type: 'time', name: 'HoraInicio' })
     horaInicio: string;

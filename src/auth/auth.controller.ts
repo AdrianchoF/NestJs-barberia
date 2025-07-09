@@ -2,7 +2,7 @@ import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, Delete }
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { CreateUserDto } from './dto/create-user.dto'
+//import { CreateUserDto } from './dto/create-user.dto'
 //import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
@@ -19,10 +19,10 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
-  @Post('User')
+  /* @Post('User')
   create(@Body() CreateUserDto: CreateUserDto) {
     return this.authService.create(CreateUserDto);
-  }
+  } */
 
   @Get()
   findAll() {
