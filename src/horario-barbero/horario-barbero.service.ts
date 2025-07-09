@@ -32,7 +32,8 @@ export class HorarioBarberoService {
     }
 
     // Validar que los días sean válidos del enum
-    const diasValidos = dto.diasSemana.filter(dia => 
+    const diasSemanaArray = Array.isArray(dto.diasSemana) ? dto.diasSemana : [dto.diasSemana];
+    const diasValidos = diasSemanaArray.filter(dia => 
       Object.values(DiaSemana).includes(dia as DiaSemana)
     );
 
