@@ -8,5 +8,6 @@ import { FranjaHoraria } from './entities/franja-horaria.entity';
   imports: [TypeOrmModule.forFeature([FranjaHoraria])],
   controllers: [FranjaHorariaController],
   providers: [FranjaHorariaService],
+  exports: [FranjaHorariaService],
 })
 export class FranjaHorariaModule {}

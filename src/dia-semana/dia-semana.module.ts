@@ -8,5 +8,6 @@ import { DiaSemana } from './entities/dia-semana.entity';
   imports: [TypeOrmModule.forFeature([DiaSemana])],
   controllers: [DiaSemanaController],
   providers: [DiaSemanaService],
+  exports: [DiaSemanaService]
 })
 export class DiaSemanaModule {}

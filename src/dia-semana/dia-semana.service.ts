@@ -1,35 +1,43 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DiaSemana } from './entities/dia-semana.entity';
 import { CreateDiaSemanaDto } from './dto/create-dia-semana.dto';
-//import { UpdateDiaSemanaDto } from './dto/update-dia-semana.dto';
 
 @Injectable()
 export class DiaSemanaService {
-
   constructor(
     @InjectRepository(DiaSemana)
-    private readonly diaRepo: Repository<DiaSemana>
-  ){}
+    private readonly diaSemanaRepository: Repository<DiaSemana>,
+  ) {}
 
-  async create(dto: CreateDiaSemanaDto) {
-    return await this.diaRepo.save(dto);
+  async create(createDiaSemanaDto: CreateDiaSemanaDto) {
+    const { nombre_dia } = createDiaSemanaDto;
+
+    const existingDia = await this.diaSemanaRepository.findOne({ where: { nombre_dia } });
+    if (existingDia) {
+      throw new BadRequestException('El día ya existe');
+    }
+
+    const dia = this.diaSemanaRepository.create({ nombre_dia });
+    return await this.diaSemanaRepository.save(dia);
   }
 
-  findAll() {
-    return this.diaRepo.find();
+  async findAll() {
+    return await this.diaSemanaRepository.find({ order: { id_dia: 'ASC' } });
   }
 
-  findOne(id: number) {
-    return this.diaRepo.findOneBy({ id_dia: id });
+  async findOne(id: number) {
+    const dia = await this.diaSemanaRepository.findOne({ where: { id_dia: id } });
+    if (!dia) {
+      throw new BadRequestException(`Día con ID ${id} no encontrado`);
+    }
+    return dia;
   }
 
-  /* update(id: number, updateDiaSemanaDto: UpdateDiaSemanaDto) {
-    return `This action updates a #${id} diaSemana`;
-  } */
-
-  remove(id: number) {
-    return this.diaRepo.delete(id);
+  async remove(id: number) {
+    const dia = await this.findOne(id);
+    await this.diaSemanaRepository.remove(dia);
+    return { message: `Día con ID ${id} eliminado correctamente` };
   }
 }
