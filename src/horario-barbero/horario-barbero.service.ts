@@ -1,12 +1,11 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { HorarioBarbero } from './entities/horario-barbero.entity';
+import { Equal, Repository } from 'typeorm';
+import { DiaSemana, HorarioBarbero } from './entities/horario-barbero.entity';
 import { CreateHorarioBarberoDto } from './dto/create-horario-barbero.dto';
 //import { UpdateHorarioBarberoDto } from './dto/update-horario-barbero.dto';
 import { User } from 'src/auth/entities/user.entity';
 import { Role } from 'src/auth/entities/user.entity';
-import { DiaSemana } from 'src/dia-semana/entities/dia-semana.entity';
 import { FranjaHoraria } from 'src/franja-horaria/entities/franja-horaria.entity';
 
 @Injectable()
@@ -14,19 +13,14 @@ export class HorarioBarberoService {
   constructor(
     @InjectRepository(HorarioBarbero)
     private readonly horarioRepository: Repository<HorarioBarbero>,
-
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-
-    @InjectRepository(DiaSemana)
-    private readonly diaSemanaRepository: Repository<DiaSemana>,
-
     @InjectRepository(FranjaHoraria)
     private readonly franjaHorariaRepository: Repository<FranjaHoraria>
   ) {}
 
   async create(dto: CreateHorarioBarberoDto) {
-    const { barberoId, idDia, idFranja } = dto;
+    const { barberoId, diasemana, idFranja } = dto;
 
     // Buscar y asignar la entidad User (barbero)
     const barbero = await this.userRepository.findOne({
@@ -41,12 +35,6 @@ export class HorarioBarberoService {
       throw new BadRequestException('El usuario no tiene rol de barbero');
     }
 
-    // Buscar y asignar la entidad DiaSemana
-    const dia = await this.diaSemanaRepository.findOne({ where: { id_dia: idDia } });
-    if (!dia) {
-      throw new BadRequestException('El dia no existe')
-    }
-
     // Buscar y asignar la entidad FranjaHoraria
     const franja = await this.franjaHorariaRepository.findOne({ where: { id_franja: idFranja } });
     if (!franja) {
@@ -55,8 +43,11 @@ export class HorarioBarberoService {
 
     // Verificar solapamiento de franjas horarias para el mismo barbero y dia
     const existingHorarios = await this.horarioRepository.find({
-      where: { barbero: { id: barberoId }, dia: { id_dia: idDia } },
-      relations: ['franja']
+      where: { 
+        barbero: { id: barberoId }, 
+        Dia_semana: diasemana 
+      },
+      relations: ['franja'],
     });
 
     const newFranjaInicio = new Date(`1970-01-01 ${franja.hora_inicio}`);
@@ -76,7 +67,7 @@ export class HorarioBarberoService {
 
     // Verificar horarios duplicados
     const existingHorario = await this.horarioRepository.findOne({
-      where: { barbero: { id: barberoId }, dia: { id_dia: idDia }, franja: { id_franja: idFranja } }
+      where: { barbero: { id: barberoId }, Dia_semana: diasemana, franja: { id_franja: idFranja } }
     });
     if (existingHorario) {
       throw new BadRequestException('Este horario ya esta registrado para este barbero');
@@ -85,16 +76,32 @@ export class HorarioBarberoService {
     // Crear y guardar el horario con las entidades relacionadas
     const horario = this.horarioRepository.create({
       barbero,
-      dia,
+      Dia_semana: diasemana,
       franja
     });
     
     return await this.horarioRepository.save(horario);
   }
 
+  async buscarporDiayHora(diaSemana: DiaSemana, hora: string): Promise<HorarioBarbero[]>{
+
+    //const horaFormateada = this.formatearHora(hora);
+   console.log(diaSemana,hora)
+    const resultado = await this.horarioRepository
+    .createQueryBuilder('horario')
+    .innerJoin('horario.franja', 'franja')
+    .select('horario.Id_RolBarbero')
+    .where('horario.Dia_semana =:diaSemana', { diaSemana })
+    .andWhere('TIME(:hora) BETWEEN franja.hora_inicio AND franja.hora_fin', {hora})
+    .getRawMany();
+    console.log(resultado)
+
+    return resultado.map(item => item);
+  }
+
   async findAll() {
     return await this.horarioRepository.find({
-      relations: ['barbero', 'dia', 'franja'],
+      relations: ['barbero', 'Dia_semana', 'franja'],
       order: { id: 'ASC' },
     });
   }
@@ -102,7 +109,7 @@ export class HorarioBarberoService {
   async findOne(id: number) {
     const horario = await this.horarioRepository.findOne({
       where: { id },
-      relations: ['barbero', 'dia', 'franja'],
+      relations: ['barbero', 'Dia_semana', 'franja'],
     });
     if (!horario) {
       throw new BadRequestException(`Horario con ID ${id} no encontrado`);

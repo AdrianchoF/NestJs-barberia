@@ -4,8 +4,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { ServicioModule } from './servicio/servicio.module';
 import { HorarioBarberoModule } from './horario-barbero/horario-barbero.module';
-import { DiaSemanaModule } from './dia-semana/dia-semana.module';
+
 import { FranjaHorariaModule } from './franja-horaria/franja-horaria.module';
+import { CitaModule } from './cita/cita.module';
 
 @Module({
   imports: [
@@ -25,8 +26,8 @@ import { FranjaHorariaModule } from './franja-horaria/franja-horaria.module';
     AuthModule,
     ServicioModule,
     HorarioBarberoModule,
-    DiaSemanaModule,
-    FranjaHorariaModule
+    FranjaHorariaModule,
+    CitaModule
   ],
 })
 export class AppModule {}
