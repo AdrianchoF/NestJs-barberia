@@ -1,6 +1,6 @@
 import { User } from "src/auth/entities/user.entity";
 import { Servicio } from "src/servicio/entities/servicio.entity";
-import { Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('cita')
 export class Cita {
@@ -18,4 +18,10 @@ export class Cita {
     @ManyToOne(() => Servicio)
     @JoinColumn({ name: 'Id_Servicio' })
     servicio: Servicio;
+
+    @Column({ type: 'time' })
+    hora: string
+
+    @Column({ type: 'date' })
+    fecha: Date
 }

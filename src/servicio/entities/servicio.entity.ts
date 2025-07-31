@@ -14,6 +14,6 @@ export class Servicio {
     @Column('decimal', { precision: 10, scale: 2 })
     precio: number;
 
-    @Column({ length: 20 })
-    duracionAprox: string;
+    @Column({ type: 'time' })
+    duracionAprox: number;
 }

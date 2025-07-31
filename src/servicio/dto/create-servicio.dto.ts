@@ -14,8 +14,8 @@ export class CreateServicioDto {
     @Min(0)
     precio: number;
 
-    @IsString()
+    @IsNumber()
     @IsNotEmpty()
     @MaxLength(20)
-    duracionAprox: string;
+    duracionAprox: number;
 }

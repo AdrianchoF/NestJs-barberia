@@ -16,7 +16,7 @@ export class HorarioBarberoService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(FranjaHoraria)
-    private readonly franjaHorariaRepository: Repository<FranjaHoraria>
+    private readonly franjaHorariaRepository: Repository<FranjaHoraria>,
   ) {}
 
   async create(dto: CreateHorarioBarberoDto) {
@@ -86,7 +86,6 @@ export class HorarioBarberoService {
   async buscarporDiayHora(diaSemana: DiaSemana, hora: string): Promise<HorarioBarbero[]>{
 
     //const horaFormateada = this.formatearHora(hora);
-   console.log(diaSemana,hora)
     const resultado = await this.horarioRepository
     .createQueryBuilder('horario')
     .innerJoin('horario.franja', 'franja')
@@ -94,7 +93,6 @@ export class HorarioBarberoService {
     .where('horario.Dia_semana =:diaSemana', { diaSemana })
     .andWhere('TIME(:hora) BETWEEN franja.hora_inicio AND franja.hora_fin', {hora})
     .getRawMany();
-    console.log(resultado)
 
     return resultado.map(item => item);
   }

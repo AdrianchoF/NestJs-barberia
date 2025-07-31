@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { CitaService } from './cita.service';
 import { CreateCitaDto } from './dto/create-cita.dto';
 import { UpdateCitaDto } from './dto/update-cita.dto';
+import { DiaSemana } from 'src/horario-barbero/entities/horario-barbero.entity';
 
 @Controller('cita')
 export class CitaController {
@@ -20,6 +21,14 @@ export class CitaController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.citaService.findOne(+id);
+  }
+
+  @Get(':fecha/:hora/:idservicio')
+     findhorario(@Param('fecha') fecha: string,
+      @Param('hora') hora : string,
+      @Param('idservicio') idservicio : string) {
+      console.log(hora)
+      return this.citaService.obtenerBarberosDisponiblesParaCita(fecha,hora,+idservicio);
   }
 
   @Patch(':id')
