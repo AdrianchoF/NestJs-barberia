@@ -83,7 +83,7 @@ export class HorarioBarberoService {
     return await this.horarioRepository.save(horario);
   }
 
-  async buscarporDiayHora(diaSemana: DiaSemana, hora: string): Promise<HorarioBarbero[]>{
+  async buscarporDiayHora(diaSemana: DiaSemana, hora: string): Promise<any[]>{
 
     //const horaFormateada = this.formatearHora(hora);
     const resultado = await this.horarioRepository

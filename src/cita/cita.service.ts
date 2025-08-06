@@ -13,65 +13,101 @@ export class CitaService {
   constructor(
     @InjectRepository(Servicio)
     private readonly servicioRepository: Repository<Servicio>,
-    
-    private readonly horarioBarberoService: HorarioBarberoService,
+
     @InjectRepository(Cita)
-    private readonly citaRepository: Repository<Cita>
+    private readonly citaRepository: Repository<Cita>,
+
+    private readonly horarioBarberoService: HorarioBarberoService,
   ) {}
 
   create(createCitaDto: CreateCitaDto) {
     return 'This action adds a new cita';
   }
 
-  async obtenerBarberosDisponiblesParaCita(
-    fecha: string,
-    hora: string,
-    idServicio: number
-  ): Promise<number[]> {
+  async obtenerBarberosDisponiblesParaCita(fecha: string, hora: string, idServicio: number) {
+  try {
+    console.log('=== DEBUG OBTENER BARBEROS DISPONIBLES ===');
+    console.log('Parámetros recibidos:', { fecha, hora, idServicio });
+
     // 1. Extraer día de la semana de la fecha
     const diaSemana = this.extraerDiaSemanaDelaFecha(fecha);
+    console.log('Día de la semana calculado:', diaSemana);
     
     // 2. Obtener duración del servicio
     const servicio = await this.servicioRepository.findOne({ where: { id: idServicio } });
     if (!servicio) {
+      console.log(`Servicio con ID ${idServicio} no encontrado`);
       throw new Error(`Servicio con ID ${idServicio} no encontrado`);
     }
- 
+    console.log('Servicio encontrado:', servicio);
+
     // 3. Calcular rango de tiempo que ocuparía la nueva cita
     const horaFormateada = hora;
     const times = [hora.toString(), servicio.duracionAprox.toString()];
     const horaFin = this.sumTimes(times); 
-   
-    
-
+    console.log('Hora inicio:', horaFormateada, 'Hora fin:', horaFin);
 
     // 4. Obtener barberos que tienen franjas disponibles para este día y hora
     const barberosConFranjas = await this.horarioBarberoService.buscarporDiayHora(diaSemana, horaFormateada);
-    console.log(barberosConFranjas)
+    console.log('Barberos con franjas disponibles:', barberosConFranjas);
     
     // 5. Filtrar barberos que NO tengan citas que se solapen
     const barberosDisponibles: number[] = [];
 
     for (const data of barberosConFranjas) {
-      console.log(data)
+      console.log('Verificando barbero:', data);
+
+      // CORRECCIÓN: Usar Id_RolBarbero en lugar de id
+      const barberoId = data.Id_RolBarbero || data.id; // Soporte para ambos formatos
+      console.log('ID del barbero extraído:', barberoId);
+
       const tieneCitasSolapadas = await this.barberoTieneCitasSolapadas(
-        data.id,
+        barberoId,
         fecha,
         horaFormateada,
         horaFin
       );
 
+      console.log(`Barbero ${barberoId} tiene citas solapadas:`, tieneCitasSolapadas);
+
       if (!tieneCitasSolapadas) {
-        barberosDisponibles.push(data.id);
+        barberosDisponibles.push(barberoId);
       }
     }
 
+    console.log('Barberos disponibles finales:', barberosDisponibles);
 
-    return barberosDisponibles;
+    // CAMBIO PRINCIPAL: Retornar el objeto con el formato esperado
+    if (barberosDisponibles.length > 0) {
+      return {
+        disponible: true,
+        barbero_id: barberosDisponibles[0], // Primer barbero disponible
+        barberos_disponibles: barberosDisponibles, // Todos los barberos disponibles
+        total_disponibles: barberosDisponibles.length
+      };
+    } else {
+      return {
+        disponible: false,
+        barbero_id: null,
+        mensaje: 'No hay barberos disponibles para esta fecha y hora',
+        barberos_disponibles: [],
+        total_disponibles: 0
+      };
+    }
+
+  } catch (error) {
+    console.error('Error en obtenerBarberosDisponiblesParaCita:', error);
+    return {
+      disponible: false,
+      barbero_id: null,
+      error: error.message,
+      barberos_disponibles: [],
+      total_disponibles: 0
+    };
   }
+}
 
-
- sumTimes(timeStrings: string[]): string {
+  sumTimes(timeStrings: string[]): string {
     let totalDuration = Duration.fromObject({ hours: 0, minutes: 0, seconds: 0 });
 
     for (const time of timeStrings) {
@@ -88,7 +124,6 @@ export class CitaService {
     return `${hours}:${minutes}:${seconds}`;
   }
 
-
   /**
    * Verifica si un barbero tiene citas que se solapen con el rango de tiempo dado
    * @param idBarbero - ID del barbero
@@ -103,7 +138,6 @@ export class CitaService {
     horaInicio: string,
     horaFin: string
   ): Promise<boolean> {
-    console.log('barbero' , idBarbero)
     const citasDelDia = await this.citaRepository
       .createQueryBuilder('cita')
       .innerJoinAndSelect('cita.servicio', 'servicio')
@@ -124,7 +158,6 @@ export class CitaService {
         return true; // Hay solapamiento
       }
     }
-
     return false; // No hay conflictos
   }
 
@@ -168,6 +201,7 @@ export class CitaService {
    * @param minutos - Minutos a sumar
    * @returns Nueva hora en formato HH:MM:SS
    */
+
   private sumarMinutosAHora(hora: string, minutos: number): string {
     const totalMinutos = this.horaAMinutos(hora) + minutos;
     const horas = Math.floor(totalMinutos / 60);
