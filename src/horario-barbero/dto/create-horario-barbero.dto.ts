@@ -1,7 +1,5 @@
-import { IsEnum, IsNotEmpty, IsString, IsInt, IsArray, ArrayNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsString, IsInt } from 'class-validator';
 import { DiaSemana } from '../entities/horario-barbero.entity';
-
-
 export class CreateHorarioBarberoDto {
     @IsInt({ message: 'El ID del barbero debe ser un número' })
     @IsNotEmpty({ message: 'El ID del barbero es obligatorio' })

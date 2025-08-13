@@ -13,8 +13,12 @@ export class ServicioService {
   ) {}
 
   async create(createServicioDto: CreateServicioDto): Promise<Servicio> {
-    const nuevoServicio = this.servicioRepository.create(createServicioDto)
-    return await this.servicioRepository.save(nuevoServicio)
+    const dto = {
+      ...createServicioDto,
+      duracionAprox: createServicioDto.duracionAprox, // keep as string
+    };
+    const nuevoServicio = this.servicioRepository.create(dto);
+    return await this.servicioRepository.save(nuevoServicio);
   }
 
   async findAll(): Promise<Servicio[]> {

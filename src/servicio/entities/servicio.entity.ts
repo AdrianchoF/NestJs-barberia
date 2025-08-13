@@ -15,5 +15,5 @@ export class Servicio {
     precio: number;
 
     @Column({ type: 'time' })
-    duracionAprox: number;
+    duracionAprox: string;
 }

@@ -20,8 +20,37 @@ export class CitaService {
     private readonly horarioBarberoService: HorarioBarberoService,
   ) {}
 
-  create(createCitaDto: CreateCitaDto) {
-    return 'This action adds a new cita';
+  async create(createCitaDto: CreateCitaDto) {
+    const { clienteId, barberoId, servicioId, hora, fecha } = createCitaDto;
+
+    // Verificar que el servicio existe
+    const servicio = await this.servicioRepository.findOne({ where: { id: servicioId } });
+    if (!servicio) {
+      throw new Error(`Servicio con ID ${servicioId} no encontrado`);
+    }
+
+    // Verificar que el cliente existe
+    const cliente = await this.citaRepository.manager.findOne('User', { where: { id: clienteId } });
+    if (!cliente) {
+      throw new Error(`Cliente con ID ${clienteId} no encontrado`);
+    }
+
+    // Verificar que el barbero existe
+    const barbero = await this.citaRepository.manager.findOne('User', { where: { id: barberoId } });
+    if (!barbero) {
+      throw new Error(`Barbero con ID ${barberoId} no encontrado`);
+    }
+
+    // Crear la cita
+    const cita = this.citaRepository.create({
+      cliente,
+      barbero,
+      servicio,
+      hora,
+      fecha,
+    });
+
+    return this.citaRepository.save(cita);
   }
 
   async obtenerBarberosDisponiblesParaCita(fecha: string, hora: string, idServicio: number) {
@@ -240,17 +269,21 @@ export class CitaService {
     return `This action returns all cita`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} cita`;
+  async findOne(id: number): Promise<Cita> {
+    const cita = await this.citaRepository.findOne({ where: { id_cita: id }, relations: ['cliente', 'barbero', 'servicio'] });
+    if (!cita) {
+      throw new Error(`Cita con id ${id} no encontrada`);
+    }
+    return cita;
   }
 
   update(id: number, updateCitaDto: UpdateCitaDto) {
     return `This action updates a #${id} cita`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} cita`;
+  async remove(id: number) {
+    const cita = await this.findOne(id);
+    await this.citaRepository.remove(cita);
+    return `Cita con id ${id} eliminada correctamente`;
   }
-
-  
 }

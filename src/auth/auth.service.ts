@@ -24,6 +24,15 @@ export class AuthService {
       throw new BadRequestException('Este Email ya existe');
     }
 
+    const users = await this.usersRepository.find();
+
+    for (const user of users) {
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (isMatch) {
+        throw new BadRequestException('Esta contraseña ya está en uso por otro usuario, por favor elija otra');
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = this.usersRepository.create({
       email,
