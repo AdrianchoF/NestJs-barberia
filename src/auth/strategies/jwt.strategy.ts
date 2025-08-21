@@ -3,12 +3,14 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth.service';
+import { Request } from 'express';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-   constructor(private readonly configService: ConfigService,
-     private readonly authService: AuthService
-   ) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly authService: AuthService
+  ) {
     
     // 1. Obten la clave secreta
     const secret = configService.get<string>('JWT_SECRET');
@@ -20,15 +22,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // 3. Ahora TypeScript sabe que 'secret' es un string
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: (req: Request) => {
+        if (!req.cookies || !req.cookies['jwt']) return null;
+        return req.cookies['jwt']; // 🔥 Aquí sacamos el token desde la cookie
+      },
       ignoreExpiration: false,
-      secretOrKey: secret, // <-- Aquí ya no hay error
+      secretOrKey: secret,
     });
 
     
   }
   
-
   async validate(payload: any) {
     const user = await this.authService.findUserById(payload.sub);
     if (!user) {

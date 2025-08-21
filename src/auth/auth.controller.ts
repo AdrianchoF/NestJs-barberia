@@ -1,4 +1,5 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, Delete, Res, ParseIntPipe } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -13,11 +14,28 @@ export class AuthController {
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
-
   @Post('login')
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Res() res: Response) {
+    const token = await this.authService.login(loginDto);
+
+    // Guardamos el token en una cookie httpOnly
+    res.cookie('jwt', token.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // true en producción con https
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60, // 1 hora
+    });
+
+    // Devuelve la respuesta usando res.json para evitar el error de respuesta múltiple
+    return res.json({ message: 'Login exitoso' });
   }
+
+  @Post('logout')
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('jwt');
+    return { message: 'Logout exitoso' };
+  }
+
 
   /* @Post('User')
   create(@Body() CreateUserDto: CreateUserDto) {
@@ -30,7 +48,7 @@ export class AuthController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: number) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.authService.findOne(+id);
   }
 
