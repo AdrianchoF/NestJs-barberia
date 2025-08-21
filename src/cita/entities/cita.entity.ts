@@ -1,3 +1,4 @@
+import { IsDate } from "class-validator";
 import { User } from "src/auth/entities/user.entity";
 import { Servicio } from "src/servicio/entities/servicio.entity";
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
@@ -22,6 +23,7 @@ export class Cita {
     @Column({ type: 'time' })
     hora: string
 
+    @IsDate()
     @Column({ type: 'date' })
     fecha: Date
 }

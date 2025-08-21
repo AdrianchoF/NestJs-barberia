@@ -24,7 +24,7 @@ export class CitaController {
   }
 
   @Get(':fecha/:hora/:idservicio')
-  findhorario(@Param('fecha') fecha: string, @Param('hora') hora : string, @Param('idservicio') idservicio : string) {
+  findhorario(@Param('fecha') fecha: Date, @Param('hora') hora : string, @Param('idservicio') idservicio : string) {
     return this.citaService.obtenerBarberosDisponiblesParaCita(fecha,hora,+idservicio);
   }
 

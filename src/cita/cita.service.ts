@@ -23,6 +23,13 @@ export class CitaService {
   async create(createCitaDto: CreateCitaDto) {
     const { clienteId, barberoId, servicioId, hora, fecha } = createCitaDto;
 
+    // Validar que la fecha no sea en el pasado
+    const fechaHoy = new Date();
+    const fechaCita = new Date(fecha + 'T' + hora);
+    if (fechaCita < fechaHoy) {
+      throw new Error('No se puede agendar una cita en el pasado');
+    }
+
     // Verificar que el servicio existe
     const servicio = await this.servicioRepository.findOne({ where: { id: servicioId } });
     if (!servicio) {
@@ -41,6 +48,36 @@ export class CitaService {
       throw new Error(`Barbero con ID ${barberoId} no encontrado`);
     }
 
+    // Calcular hora fin
+    const horaFin = this.sumTimes([hora, servicio.duracionAprox.toString()]);
+
+    // Validar disponibilidad del barbero
+    const tieneConflictos = await this.barberoTieneCitasSolapadas(barberoId, fecha, hora, horaFin);
+
+    if(tieneConflictos) {
+      // === OPCIÓN 1: Sugerir otros horarios para el mismo barbero ===
+      const horariosSugeridos: string[] = [];
+      const intervalos = [30, 60, 90] // minutos despues del horario original
+      
+      for(const minutosExtra of intervalos) {
+        const nuevaHora = this.sumarMinutosAHora(hora, minutosExtra);
+        const nuevaHoraFin = this.sumTimes([nuevaHora, servicio.duracionAprox.toString()]);
+        const libre = !(await this.barberoTieneCitasSolapadas(barberoId, fecha, nuevaHora, nuevaHoraFin));
+        if (libre) {
+          horariosSugeridos.push(nuevaHora);
+        }
+      }
+      // === OPCIÓN 2: Buscar otros barberos en el mismo horario ===
+      const otrosBarberosDisponibles = await this.obtenerBarberosDisponiblesParaCita(fecha, hora, servicioId);
+
+      return {
+        disponible: false,
+        mensaje: `El barbero ${barberoId} no esta disponible en el horario solicitado`,
+        horarios_alternativos: horariosSugeridos,
+        otros_barberos: otrosBarberosDisponibles.barberos_disponibles ?? [],
+      };
+    }
+
     // Crear la cita
     const cita = this.citaRepository.create({
       cliente,
@@ -53,7 +90,7 @@ export class CitaService {
     return this.citaRepository.save(cita);
   }
 
-  async obtenerBarberosDisponiblesParaCita(fecha: string, hora: string, idServicio: number) {
+  async obtenerBarberosDisponiblesParaCita(fecha: Date, hora: string, idServicio: number) {
   try {
     console.log('=== DEBUG OBTENER BARBEROS DISPONIBLES ===');
     console.log('Parámetros recibidos:', { fecha, hora, idServicio });
@@ -163,7 +200,7 @@ export class CitaService {
    */
   private async barberoTieneCitasSolapadas(
     idBarbero: number,
-    fecha: string,
+    fecha: Date,
     horaInicio: string,
     horaFin: string
   ): Promise<boolean> {
@@ -248,7 +285,7 @@ export class CitaService {
    * @param fecha - Fecha en formato YYYY-MM-DD
    * @returns Día de la semana como enum DiaSemana
    */
-  private extraerDiaSemanaDelaFecha(fecha: string): DiaSemana {
+  private extraerDiaSemanaDelaFecha(fecha: Date): DiaSemana {
     const fechaObj = new Date(fecha + 'T00:00:00'); // Agregar tiempo para evitar problemas de zona horaria
     const numeroDia = fechaObj.getDay(); // 0 = Domingo, 1 = Lunes, etc.
     
