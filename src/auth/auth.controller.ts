@@ -1,10 +1,11 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Param, Patch, Delete, Res, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Body, Request, Get, Param, Patch, Delete, Res, ParseIntPipe } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { UseGuards } from '@nestjs/common';
 //import { CreateUserDto } from './dto/create-user.dto'
-//import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -61,10 +62,17 @@ export class AuthController {
   remove(@Param('id') id: string) {
     return this.authService.remove(+id);
   }
+
+  @UseGuards(AuthGuard('jwt'))   // ⬅️ Aquí se protege con tu estrategia
+  @Get('profile')
+  getProfile(@Req() req) {
+    // req.user viene de lo que devuelves en validate() de JwtStrategy
+    return req.user;
+  }
   
-  //@UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @Post('profile')
   getProfile(@Request() req) {
-    return req.user;
+    return req.user; // este viene del validate() en JwtStrategy
   }
 }
