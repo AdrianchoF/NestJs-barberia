@@ -62,16 +62,9 @@ export class AuthController {
   remove(@Param('id') id: string) {
     return this.authService.remove(+id);
   }
-
-  /* @UseGuards(AuthGuard('jwt'))   // ⬅️ Aquí se protege con tu estrategia
-  @Get('profile')
-  getProfile(@Req() req) {
-    // req.user viene de lo que devuelves en validate() de JwtStrategy
-    return req.user;
-  } */
   
   @UseGuards(JwtAuthGuard)
-  @Post('profile')
+  @Get('profile')
   getProfile(@Request() req) {
     return req.user; // este viene del validate() en JwtStrategy
   }
