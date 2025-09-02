@@ -27,8 +27,11 @@ export class AuthController {
       maxAge: 1000 * 60 * 60, // 1 hora
     });
 
-    // Devuelve la respuesta usando res.json para evitar el error de respuesta múltiple
-    return res.json({ message: 'Login exitoso' });
+    // 🎯 DEVOLVER TAMBIÉN LOS DATOS DEL USUARIO
+    return res.json({ 
+      message: 'Login exitoso',
+      user: token.user // Asegúrate de que tu authService.login devuelva también el usuario
+    });
   }
 
   @Post('logout')
@@ -37,6 +40,11 @@ export class AuthController {
     return { message: 'Logout exitoso' };
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  getProfile(@Request() req) {
+    return req.user; // este viene del validate() en JwtStrategy
+  }
 
   /* @Post('User')
   create(@Body() CreateUserDto: CreateUserDto) {
@@ -63,9 +71,4 @@ export class AuthController {
     return this.authService.remove(+id);
   }
   
-  @UseGuards(JwtAuthGuard)
-  @Get('profile')
-  getProfile(@Request() req) {
-    return req.user; // este viene del validate() en JwtStrategy
-  }
 }
