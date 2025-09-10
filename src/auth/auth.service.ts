@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { Role, User } from './entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
@@ -61,7 +61,7 @@ export class AuthService {
     }
 
     // Payload del token
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, email: user.email, role: user.role };
     const accessToken = await this.jwtService.signAsync(payload);
 
     return {
@@ -70,7 +70,8 @@ export class AuthService {
         id: user.id,
         email: user.email,
         nombre: user.nombre,   // agrega los campos que necesites
-        apellido: user.apellido
+        apellido: user.apellido,
+        Role: user.role,
       },
     };
   }
