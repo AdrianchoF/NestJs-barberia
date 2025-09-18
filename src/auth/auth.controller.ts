@@ -5,6 +5,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
+import { Role } from './entities/user.entity';
 //import { CreateUserDto } from './dto/create-user.dto'
 
 @Controller('auth')
@@ -15,6 +16,14 @@ export class AuthController {
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
+
+  @Post('register-barber')
+  async registerBarber(@Body() registerDto: RegisterDto) {
+    // fuerza role barbero
+    registerDto.role = Role.BARBERO;
+    return this.authService.register(registerDto);
+  }
+
   @Post('login')
   async login(@Body() loginDto: LoginDto, @Res() res: Response) {
     const token = await this.authService.login(loginDto);

@@ -27,6 +27,10 @@ export class RegisterDto {
   telefono: string;
 
   @IsOptional()
+  @IsString({ message: 'La foto debe ser una URL en texto' })
+  foto?: string;
+
+  @IsOptional()
   @IsEnum(Role, { message: 'El rol debe ser CLIENTE, BARBERO o ADMINISTRADOR' })
   role: Role;
 

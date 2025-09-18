@@ -17,7 +17,7 @@ export class AuthService {
   ) {}
 
   async register(registerDto: RegisterDto): Promise<User> {
-    const { email, password, nombre, apellido, telefono, role } = registerDto;
+    const { email, password, nombre, apellido, telefono, foto,  role } = registerDto;
     
     const existingUser = await this.usersRepository.findOne({ where: { email } });
     if (existingUser) {
@@ -40,6 +40,7 @@ export class AuthService {
       nombre,
       apellido,
       telefono,
+      foto,
       role,
       activo: true
     });

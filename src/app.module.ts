@@ -23,11 +23,12 @@ import { CitaModule } from './cita/cita.module';
       autoLoadEntities: true,
       synchronize: true, // Solo en desarrollo
     }),
+
     AuthModule,
     ServicioModule,
     HorarioBarberoModule,
     FranjaHorariaModule,
-    CitaModule
+    CitaModule,
   ],
 })
 export class AppModule {}
