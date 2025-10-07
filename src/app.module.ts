@@ -7,6 +7,8 @@ import { HorarioBarberoModule } from './horario-barbero/horario-barbero.module';
 
 import { FranjaHorariaModule } from './franja-horaria/franja-horaria.module';
 import { CitaModule } from './cita/cita.module';
+import { ProductoModule } from './producto/producto.module';
+import { CategoriaProductoModule } from './categoria-producto/categoria-producto.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { CitaModule } from './cita/cita.module';
     HorarioBarberoModule,
     FranjaHorariaModule,
     CitaModule,
+    ProductoModule,
+    CategoriaProductoModule,
   ],
 })
 export class AppModule {}
