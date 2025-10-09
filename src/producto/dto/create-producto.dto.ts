@@ -21,11 +21,10 @@ export class CreateProductoDto {
 
     @IsNotEmpty()
     @IsString()
-    @MaxLength(100)
-    categoria: string;
-
-    @IsNotEmpty()
-    @IsString()
     @MaxLength(500)
     imagenUrl: string;
+
+    @IsNotEmpty()
+    @IsNumber()
+    categoriaId: number;
 }

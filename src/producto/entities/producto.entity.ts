@@ -1,5 +1,5 @@
 import { CategoriaProducto } from "src/categoria-producto/entities/categoria-producto.entity";
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Producto {
@@ -18,9 +18,13 @@ export class Producto {
     @Column('int')
     stock: number;
 
-    @ManyToOne(() => CategoriaProducto, (categoria: CategoriaProducto) => categoria.productos, { eager: true })
-    categoria: CategoriaProducto;
-
     @Column({ length: 255 })
     imagenUrl: string;
+
+    @ManyToOne(() => CategoriaProducto, (categoria: CategoriaProducto) => categoria.productos, { eager: true })
+    @JoinColumn({ name: 'categoriaId' })
+    categoria: CategoriaProducto;
+
+    @Column()
+    categoriaId: number;
 }

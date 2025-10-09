@@ -13,21 +13,21 @@ export class ProductoService {
   ) {}
 
   async create(createProductoDto: CreateProductoDto) {
-    // Convert categoria from string to object if necessary
-    const { categoria, ...rest } = createProductoDto;
-    const producto = this.productoRepository.create({
-      ...rest,
-      categoria: categoria ? { nombre: categoria } : undefined, // Adjust property name as needed
-    });
+    const producto = this.productoRepository.create(createProductoDto);
     return await this.productoRepository.save(producto);
   }
 
   async findAll() {
-    return await this.productoRepository.find();
+    return await this.productoRepository.find({
+      relations: ['categoria']
+    });
   }
 
   async findOne(id: number) {
-    const producto = await this.productoRepository.findOneBy({ id });
+    const producto = await this.productoRepository.findOne({
+      where: { id },
+      relations: ['categoria']
+    });
 
     if (!producto) {
       throw new NotFoundException(`Producto con ID ${id} no encontrado`);
@@ -36,13 +36,7 @@ export class ProductoService {
   }
 
   async update(id: number, updateProductoDto: UpdateProductoDto) {
-    // Convert categoria from string to object if necessary
-    const { categoria, ...rest } = updateProductoDto;
-    const updateData = {
-      ...rest,
-      categoria: categoria ? { nombre: categoria } : undefined, // Adjust property name as needed
-    };
-    await this.productoRepository.update(id, updateData);
+    await this.productoRepository.update(id, updateProductoDto);
     return this.findOne(id);
   }
 
