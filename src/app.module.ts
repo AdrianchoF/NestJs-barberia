@@ -9,6 +9,9 @@ import { FranjaHorariaModule } from './franja-horaria/franja-horaria.module';
 import { CitaModule } from './cita/cita.module';
 import { ProductoModule } from './producto/producto.module';
 import { CategoriaProductoModule } from './categoria-producto/categoria-producto.module';
+import { ProveedorModule } from './proveedor/proveedor.module';
+import { CompraProductoModule } from './compra-producto/compra-producto.module';
+import { DetalleCompraModule } from './detalle-compra/detalle-compra.module';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { CategoriaProductoModule } from './categoria-producto/categoria-producto
     CitaModule,
     ProductoModule,
     CategoriaProductoModule,
+    ProveedorModule,
+    CompraProductoModule,
+    DetalleCompraModule,
   ],
 })
 export class AppModule {}
