@@ -5,11 +5,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtStrategy } from './strategies/jwt.strategy'
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { HorarioBarbero } from 'src/horario-barbero/entities/horario-barbero.entity';
+import { FranjaHoraria } from 'src/franja-horaria/entities/franja-horaria.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, HorarioBarbero, FranjaHoraria]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

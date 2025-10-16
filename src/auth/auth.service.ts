@@ -6,13 +6,31 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-//import { CreateUserDto } from './dto/create-user.dto'
+import { HorarioBarbero } from 'src/horario-barbero/entities/horario-barbero.entity';
+import { FranjaHoraria } from 'src/franja-horaria/entities/franja-horaria.entity';
+
+export class CreateBarberWithScheduleDto {
+  nombre: string;
+  apellido: string;
+  email: string;
+  password: string;
+  telefono: string;
+  foto?: string;
+  horarios: Array<{
+    diasemana: string;
+    idFranja: number;
+  }>;
+}
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(HorarioBarbero)
+    private readonly horarioBarberoRepository: Repository<HorarioBarbero>,
+    @InjectRepository(FranjaHoraria)
+    private readonly franjaHorariaRepository: Repository<FranjaHoraria>,
     private jwtService: JwtService,
   ) {}
 
@@ -48,6 +66,89 @@ export class AuthService {
     return await this.usersRepository.save(user);
   }
 
+  async registerBarberWithSchedule(
+    createBarberWithScheduleDto: CreateBarberWithScheduleDto,
+  ) {
+    const { horarios, email, password, nombre, apellido, telefono, foto } = createBarberWithScheduleDto;
+
+    const existingUser = await this.usersRepository.findOne({ where: { email } });
+    if (existingUser) {
+      throw new BadRequestException('Este Email ya existe');
+    }
+
+    const users = await this.usersRepository.find();
+
+    for (const user of users) {
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (isMatch) {
+        throw new BadRequestException('Esta contraseña ya está en uso por otro usuario, por favor elija otra');
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const barber = this.usersRepository.create({
+      email,
+      password: hashedPassword,
+      nombre,
+      apellido,
+      telefono,
+      foto,
+      role: Role.BARBERO,
+      activo: true
+    });
+
+    const savedBarber = await this.usersRepository.save(barber);
+
+    // Crear horarios para el barbero
+    if (horarios && horarios.length > 0) {
+      try {
+        const horariosGuardados: HorarioBarbero[] = [];
+
+        for (const horario of horarios) {
+          // Obtener la entidad FranjaHoraria completa
+          const franja = await this.franjaHorariaRepository.findOne({
+            where: { id_franja: horario.idFranja },
+          });
+
+          if (!franja) {
+            throw new BadRequestException(
+              `La franja horaria con ID ${horario.idFranja} no existe`,
+            );
+          }
+
+          // Crear el horario con la franja completa
+          const nuevoHorario = this.horarioBarberoRepository.create({
+            barbero: savedBarber,
+            Dia_semana: horario.diasemana as any,
+            franja: franja,
+          });
+
+          const horarioGuardado = await this.horarioBarberoRepository.save(
+            nuevoHorario,
+          );
+          horariosGuardados.push(horarioGuardado);
+        }
+
+        return {
+          barbero: savedBarber,
+          horarios: horariosGuardados,
+          message: 'Barbero y horarios creados exitosamente',
+        };
+      } catch (error) {
+        console.error('Error al crear horarios:', error);
+        throw new BadRequestException(
+          'Error al crear los horarios del barbero: ' + error.message,
+        );
+      }
+    }
+
+    return {
+      barbero: savedBarber,
+      horarios: [],
+      message: 'Barbero creado exitosamente sin horarios',
+    };
+  }
+
   async login(loginDto: LoginDto): Promise<{ accessToken: string; user: any }> {
     const { email, password } = loginDto;
     
@@ -70,29 +171,12 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        nombre: user.nombre,   // agrega los campos que necesites
+        nombre: user.nombre,
         apellido: user.apellido,
         Role: user.role,
       },
     };
   }
-
-  /* async create(CreateUserDto: CreateUserDto): Promise<User> {
-    // Verificar si el email ya existe
-    const existeEmail = await this.usersRepository.findOne({
-      where: { email: CreateUserDto.email },
-    });
-  
-    if (existeEmail) {
-      throw new ConflictException('Ya existe un cliente con este email');
-    }
-  
-    const user = this.usersRepository.create({
-      ...CreateUserDto,
-      telefono: CreateUserDto.telefono ? String(CreateUserDto.telefono): undefined,
-    });
-    return await this.usersRepository.save(user); 
-  } */
 
   async findAll(): Promise<User[]> {
     return await this.usersRepository.find({
@@ -112,41 +196,11 @@ export class AuthService {
     return cliente;
   }
 
-  /* async update(id: number, updateClienteDto: UpdateClienteDto): Promise<User> {
-    const cliente = await this.findOne(id);
-      // Si se está actualizando el email, verificar que no exista
-    if (updateClienteDto.email && updateClienteDto.email !== cliente.email) {
-      const existeEmail = await this.clienteRepository.findOne({
-        where: { email: updateClienteDto.email },
-      });
-  
-      if (existeEmail) {
-        throw new ConflictException('Ya existe un cliente con este email');
-      }
-    }
-  
-      Object.assign(cliente, updateClienteDto);
-      return await this.clienteRepository.save(cliente);
-  } */
-
   async remove(id: number) {
     const user = await this.findOne(id);
     await this.usersRepository.remove(user);
     return `Usuario con id ${id} eliminado satisfactoriamente`;
   }
-
-  /* async findByEmail(email: string) {
-    return await this.usersRepository.findOne({
-      where: { email },
-    });
-  }
-  
-  async findActivos(): Promise<User[]> {
-    return await this.usersRepository.find({
-      where: { activo: true },
-      order: { nombre: 'ASC' },
-    });
-  } */
 
   async findUserById(id: number) {
     return this.usersRepository.findOne({ where: { id } });

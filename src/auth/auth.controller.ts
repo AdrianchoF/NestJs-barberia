@@ -6,7 +6,6 @@ import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
 import { Role } from './entities/user.entity';
-//import { CreateUserDto } from './dto/create-user.dto'
 
 @Controller('auth')
 export class AuthController {
@@ -22,6 +21,11 @@ export class AuthController {
     // fuerza role barbero
     registerDto.role = Role.BARBERO;
     return this.authService.register(registerDto);
+  }
+
+  @Post('register-barber-with-schedule')
+  async registerBarberWithSchedule(@Body() createBarberWithScheduleDto: any) {
+    return this.authService.registerBarberWithSchedule(createBarberWithScheduleDto);
   }
 
   @Post('login')
@@ -55,11 +59,6 @@ export class AuthController {
     return req.user; // este viene del validate() en JwtStrategy
   }
 
-  /* @Post('User')
-  create(@Body() CreateUserDto: CreateUserDto) {
-    return this.authService.create(CreateUserDto);
-  } */
-
   @Get()
   findAll() {
     return this.authService.findAll();
@@ -69,11 +68,6 @@ export class AuthController {
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.authService.findOne(+id);
   }
-
-  /* @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClienteDto: UpdateClienteDto) {
-    return this.authService.update(+id, updateClienteDto);
-  } */  
 
   @Delete(':id')
   remove(@Param('id') id: string) {
