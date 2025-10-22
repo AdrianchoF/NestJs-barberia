@@ -83,23 +83,26 @@ export class HorarioBarberoService {
     return await this.horarioRepository.save(horario);
   }
 
-  async buscarporDiayHora(diaSemana: DiaSemana, hora: string): Promise<any[]>{
+  async buscarporDiayHora(diaSemana: DiaSemana, hora: string): Promise<any[]> {
+    const horarios = await this.horarioRepository
+      .createQueryBuilder('horario')
+      .innerJoinAndSelect('horario.franja', 'franja')
+      .innerJoinAndSelect('horario.barbero', 'barbero')
+      .where('horario.Dia_semana = :diaSemana', { diaSemana })
+      .andWhere('TIME(:hora) BETWEEN franja.hora_inicio AND franja.hora_fin', { hora })
+      .getMany();
 
-    //const horaFormateada = this.formatearHora(hora);
-    const resultado = await this.horarioRepository
-    .createQueryBuilder('horario')
-    .innerJoin('horario.franja', 'franja')
-    .select('horario.Id_RolBarbero')
-    .where('horario.Dia_semana =:diaSemana', { diaSemana })
-    .andWhere('TIME(:hora) BETWEEN franja.hora_inicio AND franja.hora_fin', {hora})
-    .getRawMany();
+    // Retornar solo los barberos únicos (sin duplicados)
+    const barberosUnicos = Array.from(
+      new Map(horarios.map(h => [h.barbero.id, h.barbero])).values()
+    );
 
-    return resultado.map(item => item);
+    return barberosUnicos;
   }
 
   async findAll() {
     return await this.horarioRepository.find({
-      relations: ['barbero', 'Dia_semana', 'franja'],
+      relations: ['barbero', 'franja'],
       order: { id: 'ASC' },
     });
   }
@@ -107,7 +110,7 @@ export class HorarioBarberoService {
   async findOne(id: number) {
     const horario = await this.horarioRepository.findOne({
       where: { id },
-      relations: ['barbero', 'Dia_semana', 'franja'],
+      relations: ['barbero', 'franja'],
     });
     if (!horario) {
       throw new BadRequestException(`Horario con ID ${id} no encontrado`);

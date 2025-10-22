@@ -18,17 +18,16 @@ export class HorarioBarberoController {
     return this.horarioBarberoService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.horarioBarberoService.findOne(+id);
-  }
-
-
-    @Get(':dia/:hora')
-   findhorario(@Param('dia') dia: DiaSemana,
+  @Get(':dia/:hora')
+  findhorario(@Param('dia') dia: DiaSemana,
     @Param('hora') hora : string) {
     console.log(hora)
     return this.horarioBarberoService.buscarporDiayHora(dia,hora);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.horarioBarberoService.findOne(+id);
   }
 
   /* @Patch(':id')
