@@ -21,49 +21,54 @@ export class CitaService {
   ) {}
 
   async create(createCitaDto: CreateCitaDto) {
-    const { clienteId, barberoId, servicioId, hora, fecha } = createCitaDto;
+  const { clienteId, barberoId, servicioId, hora, fecha, estado } = createCitaDto;
 
-    // Validar que la fecha no sea en el pasado
-    const fechaHoy = new Date();
-    const fechaCita = new Date(fecha + 'T' + hora);
-    if (fechaCita < fechaHoy) {
-      throw new Error('No se puede agendar una cita en el pasado');
-    }
+  // Validar que la fecha no sea en el pasado
+  const fechaHoy = new Date();
+  const fechaCita = new Date(fecha + 'T' + hora);
+  if (fechaCita < fechaHoy) {
+    throw new BadRequestException('No se puede agendar una cita en el pasado');
+  }
 
+  // Verificar que el cliente existe
+  const cliente = await this.citaRepository.manager.findOne('User', { where: { id: clienteId } });
+  if (!cliente) {
+    throw new BadRequestException(`Cliente con ID ${clienteId} no encontrado`);
+  }
+
+  // Verificar que el barbero existe
+  const barbero = await this.citaRepository.manager.findOne('User', { where: { id: barberoId } });
+  if (!barbero) {
+    throw new BadRequestException(`Barbero con ID ${barberoId} no encontrado`);
+  }
+
+  // Validar que el barbero trabaje ese dia y hora
+  const diaSemana = this.extraerDiaSemanaDelaFecha(fecha);
+  if(!(await this.barberoTrabajaEnDiaYHora(barberoId, diaSemana, hora))) {
+    throw new BadRequestException(`El barbero con ID ${barberoId} no trabaja el ${diaSemana} a las ${hora}`);
+  }
+
+  // ✅ NUEVO: Procesar cada servicio
+  const citasCreadas: Cita[] = [];
+  let horaActual = hora; // Hora de inicio para la primera cita
+
+  for (const idServicio of servicioId) {
     // Verificar que el servicio existe
-    const servicio = await this.servicioRepository.findOne({ where: { id: servicioId } });
+    const servicio = await this.servicioRepository.findOne({ where: { id: idServicio } });
     if (!servicio) {
-      throw new Error(`Servicio con ID ${servicioId} no encontrado`);
+      throw new BadRequestException(`Servicio con ID ${idServicio} no encontrado`);
     }
 
-    // Verificar que el cliente existe
-    const cliente = await this.citaRepository.manager.findOne('User', { where: { id: clienteId } });
-    if (!cliente) {
-      throw new Error(`Cliente con ID ${clienteId} no encontrado`);
-    }
+    // Calcular hora fin para este servicio
+    const horaFin = this.sumTimes([horaActual, servicio.duracionAprox.toString()]);
 
-    // Verificar que el barbero existe
-    const barbero = await this.citaRepository.manager.findOne('User', { where: { id: barberoId } });
-    if (!barbero) {
-      throw new Error(`Barbero con ID ${barberoId} no encontrado`);
-    }
-
-    // Validar que el barbero trabaje ese dia y hora
-    const diaSemana = this.extraerDiaSemanaDelaFecha(fecha);
-    if(!(await this.barberoTrabajaEnDiaYHora(barberoId, diaSemana, hora))) {
-      throw new BadRequestException(`El barbero con ID ${barberoId} no trabaja el ${diaSemana} a las ${hora}`);
-    }
-
-    // Calcular hora fin
-    const horaFin = this.sumTimes([hora, servicio.duracionAprox.toString()]);
-
-    // Validar disponibilidad del barbero
-    const tieneConflictos = await this.barberoTieneCitasSolapadas(barberoId, fecha, hora, horaFin);
+    // Validar disponibilidad del barbero para este servicio
+    const tieneConflictos = await this.barberoTieneCitasSolapadas(barberoId, fecha, horaActual, horaFin);
 
     if(tieneConflictos) {
-      // === OPCIÓN 1: Sugerir otros horarios para el mismo barbero ===
+      // Si hay conflictos, buscar alternativas
       const horariosSugeridos: string[] = [];
-      const intervalos = [30, 60, 90] // minutos despues del horario original
+      const intervalos = [30, 60, 90]; // minutos después del horario original
       
       for(const minutosExtra of intervalos) {
         const nuevaHora = this.sumarMinutosAHora(hora, minutosExtra);
@@ -73,28 +78,43 @@ export class CitaService {
           horariosSugeridos.push(nuevaHora);
         }
       }
-      // === OPCIÓN 2: Buscar otros barberos en el mismo horario ===
-      const otrosBarberosDisponibles = await this.obtenerBarberosDisponiblesParaCita(fecha, hora, servicioId);
+
+      // Buscar otros barberos en el mismo horario
+      const otrosBarberosDisponibles = await this.obtenerBarberosDisponiblesParaCita(fecha, hora, idServicio);
 
       return {
         disponible: false,
-        mensaje: `El barbero ${barberoId} no esta disponible en el horario solicitado`,
+        mensaje: `El barbero ${barberoId} no está disponible en el horario solicitado`,
         horarios_alternativos: horariosSugeridos,
         otros_barberos: otrosBarberosDisponibles.barberos_disponibles ?? [],
       };
     }
 
-    // Crear la cita
+    // Crear la cita para este servicio
     const cita = this.citaRepository.create({
       cliente,
       barbero,
       servicio,
-      hora,
+      hora: horaActual,
       fecha,
+      estado: estado || 'PENDIENTE'
     });
 
-    return this.citaRepository.save(cita);
+    const citaGuardada = await this.citaRepository.save(cita);
+    citasCreadas.push(citaGuardada);
+
+    // ✅ Actualizar hora para el siguiente servicio (si hay más)
+    horaActual = horaFin;
   }
+
+  // ✅ Retornar todas las citas creadas
+  return {
+    disponible: true,
+    mensaje: `${citasCreadas.length} cita(s) agendada(s) exitosamente`,
+    citas: citasCreadas,
+    total_citas: citasCreadas.length
+  };
+}
 
   async obtenerBarberosDisponiblesParaCita(fecha: Date, hora: string, idServicio: number) {
     try {
@@ -130,7 +150,7 @@ export class CitaService {
         console.log('Verificando barbero:', data);
 
         // CORRECCIÓN: Usar Id_RolBarbero en lugar de id
-        const barberoId = data.Id_RolBarbero || data.id; // Soporte para ambos formatos
+        const barberoId = data.id; // Soporte para ambos formatos
         console.log('ID del barbero extraído:', barberoId);
 
         const tieneCitasSolapadas = await this.barberoTieneCitasSolapadas(
@@ -183,7 +203,7 @@ export class CitaService {
   // Detectar si el barbero trabaja en ese dia y hora
   private async barberoTrabajaEnDiaYHora(barberoId: number, diaSemana: DiaSemana, hora: string): Promise<boolean> {
     const horarios = await this.horarioBarberoService.buscarporDiayHora(diaSemana, hora);
-    return horarios.some(horario => horario.Id_RolBarbero === barberoId);
+    return horarios.some(horario => horario.id === barberoId);
   }
 
   sumTimes(timeStrings: string[]): string {

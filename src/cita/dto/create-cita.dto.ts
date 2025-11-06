@@ -1,4 +1,5 @@
-import { IsDateString, IsInt, IsNotEmpty, IsString } from "class-validator";
+import { IsArray, IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { EstadoCita } from "../entities/cita.entity";
 export class CreateCitaDto {
     @IsNotEmpty()
     @IsInt()
@@ -9,8 +10,9 @@ export class CreateCitaDto {
     barberoId: number;
 
     @IsNotEmpty()
-    @IsInt()
-    servicioId: number;
+    @IsArray()
+    @IsInt({ each: true })
+    servicioId: number[];
 
     @IsNotEmpty()
     @IsString()
@@ -19,4 +21,8 @@ export class CreateCitaDto {
     @IsNotEmpty()
     @IsDateString()
     fecha: Date;
+
+    @IsOptional()
+    @IsString()
+    estado: EstadoCita;
 }
