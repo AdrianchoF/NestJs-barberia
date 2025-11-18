@@ -19,4 +19,8 @@ export class CreateServicioDto {
         message: 'duracionAprox must be in the format HH:mm:ss',
     })
     duracionAprox: string;
+
+    @IsNotEmpty()
+    @IsNumber()
+    categoriaId: number;
 }

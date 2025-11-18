@@ -22,12 +22,15 @@ export class ServicioService {
   }
 
   async findAll(): Promise<Servicio[]> {
-    return await this.servicioRepository.find()
+    return await this.servicioRepository.find({
+      relations: ['categoria']
+    })
   }
 
   async findOne(id: number) {
     const servicio = await this.servicioRepository.findOne({
       where : { id },
+      relations: ['categoria']
     })
 
     if (!servicio) {

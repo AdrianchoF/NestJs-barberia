@@ -12,6 +12,7 @@ import { CategoriaProductoModule } from './categoria-producto/categoria-producto
 import { ProveedorModule } from './proveedor/proveedor.module';
 import { CompraProductoModule } from './compra-producto/compra-producto.module';
 import { DetalleCompraModule } from './detalle-compra/detalle-compra.module';
+import { CategoriaServicioModule } from './categoria-servicio/categoria-servicio.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DetalleCompraModule } from './detalle-compra/detalle-compra.module';
     ProveedorModule,
     CompraProductoModule,
     DetalleCompraModule,
+    CategoriaServicioModule,
   ],
 })
 export class AppModule {}
