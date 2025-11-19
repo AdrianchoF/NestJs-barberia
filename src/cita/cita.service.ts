@@ -335,8 +335,8 @@ export class CitaService {
     return mapeosDias[numeroDia];
   }
 
-  findAll() {
-    return `This action returns all cita`;
+  async findAll() {
+    return await this.citaRepository.find({ relations: ['cliente', 'barbero', 'servicio'] });
   }
 
   async findOne(id: number): Promise<Cita> {
