@@ -1,12 +1,13 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, ForbiddenException } from '@nestjs/common';
 import { CreateCitaDto } from './dto/create-cita.dto';
 import { UpdateCitaDto } from './dto/update-cita.dto';
+import { UpdateEstadoCitaDto } from './dto/update-estado-cita.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Servicio } from 'src/servicio/entities/servicio.entity';
 import { Repository } from 'typeorm';
 import { DiaSemana, HorarioBarbero } from 'src/horario-barbero/entities/horario-barbero.entity';
 import { HorarioBarberoService } from 'src/horario-barbero/horario-barbero.service';
-import { Cita } from './entities/cita.entity';
+import { Cita, EstadoCita } from './entities/cita.entity';
 import { Duration } from 'luxon';
 @Injectable()
 export class CitaService {
@@ -333,6 +334,74 @@ export class CitaService {
     };
 
     return mapeosDias[numeroDia];
+  }
+
+    /**
+   * Actualiza el estado de una cita
+   * @param id - ID de la cita
+   * @param updateEstadoDto - DTO con el nuevo estado
+   * @returns Cita actualizada
+   */
+  async actualizarEstado(id: number, updateEstadoDto: UpdateEstadoCitaDto) {
+    const cita = await this.findOne(id);
+
+    // Validar que la cita esté en estado "agendada" para poder cancelarla
+    if (updateEstadoDto.estado === 'cancelada' && cita.estado !== 'agendada') {
+      throw new BadRequestException(
+        'Solo se pueden cancelar citas con estado "agendada"'
+      );
+    }
+
+    // Validar tiempo de anticipación para cancelaciones (2 horas)
+    if (updateEstadoDto.estado === 'cancelada') {
+      const ahora = new Date();
+      const fechaHoraCita = new Date(`${cita.fecha}T${cita.hora}`);
+      const diferenciaHoras = (fechaHoraCita.getTime() - ahora.getTime()) / (1000 * 60 * 60);
+
+      if (diferenciaHoras < 2) {
+        throw new ForbiddenException(
+          'No se puede cancelar una cita con menos de 2 horas de anticipación. ' +
+          'Por favor, contacta directamente con la barbería.'
+        );
+      }
+    }
+
+    // Actualizar el estado
+    cita.estado = updateEstadoDto.estado;
+    const citaActualizada = await this.citaRepository.save(cita);
+
+    return {
+      success: true,
+      mensaje: `Cita ${updateEstadoDto.estado} exitosamente`,
+      cita: citaActualizada
+    };
+  }
+
+  /**
+   * Cancelar una cita (método conveniente)
+   * @param id - ID de la cita
+   * @returns Cita cancelada
+   */
+  async cancelarCita(id: number) {
+    return this.actualizarEstado(id, { estado: EstadoCita.CANCELADA });
+  }
+
+  /**
+   * Completar una cita (método conveniente para barberos/admin)
+   * @param id - ID de la cita
+   * @returns Cita completada
+   */
+  async completarCita(id: number) {
+    const cita = await this.findOne(id);
+    
+    // Validar que la cita esté agendada
+    if (cita.estado !== 'agendada') {
+      throw new BadRequestException(
+        'Solo se pueden completar citas con estado "agendada"'
+      );
+    }
+
+    return this.actualizarEstado(id, { estado: EstadoCita.COMPLETADA });
   }
 
   async findAll() {
