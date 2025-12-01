@@ -118,6 +118,21 @@ export class HorarioBarberoService {
     return horario;
   }
 
+  // Agregar este método en HorarioBarberoService
+  async findByBarbero(barberoId: number) {
+    const horarios = await this.horarioRepository.find({
+      where: { barbero: { id: barberoId } },
+      relations: ['barbero', 'franja'],
+      order: { Dia_semana: 'ASC', franja: { hora_inicio: 'ASC' } },
+    });
+
+    if (!horarios || horarios.length === 0) {
+      throw new BadRequestException(`No se encontraron horarios para el barbero con ID ${barberoId}`);
+    }
+
+    return horarios;
+  }
+
   /* update(id: number, updateHorarioBarberoDto: UpdateHorarioBarberoDto) {
     return `This action updates a #${id} horarioBarbero`;
   } */

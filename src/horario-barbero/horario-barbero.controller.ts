@@ -18,6 +18,12 @@ export class HorarioBarberoController {
     return this.horarioBarberoService.findAll();
   }
 
+  // Agregar ANTES del @Get(':id') para que no haya conflicto de rutas
+  @Get('barbero/:barberoId')
+  findByBarbero(@Param('barberoId') barberoId: string) {
+    return this.horarioBarberoService.findByBarbero(+barberoId);
+  }
+
   @Get(':dia/:hora')
   findhorario(@Param('dia') dia: DiaSemana,
     @Param('hora') hora : string) {
