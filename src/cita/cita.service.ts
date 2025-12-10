@@ -404,6 +404,47 @@ export class CitaService {
     return this.actualizarEstado(id, { estado: EstadoCita.COMPLETADA });
   }
 
+  /**
+ * Obtiene las horas ocupadas de un barbero en una fecha específica
+ * @param barberoId - ID del barbero
+ * @param fecha - Fecha en formato YYYY-MM-DD
+ * @returns Array de horas ocupadas con sus rangos
+ */
+  async obtenerHorasOcupadasBarbero(barberoId: number, fecha: string) {
+      try {
+      // Obtener todas las citas del barbero en esa fecha
+      const citas = await this.citaRepository
+        .createQueryBuilder('cita')
+        .innerJoinAndSelect('cita.servicio', 'servicio')
+        .where('cita.Id_RolBarbero = :barberoId', { barberoId })
+        .andWhere('cita.fecha = :fecha', { fecha })
+        .andWhere('cita.estado != :estadoCancelada', { estadoCancelada: 'cancelada' }) // Excluir canceladas
+        .getMany();
+
+      // Calcular rangos de tiempo ocupados
+      const horasOcupadas = citas.map(cita => {
+        const horaInicio = cita.hora.toString();
+        const horaFin = this.sumTimes([horaInicio, cita.servicio.duracionAprox.toString()]);
+        
+        return {
+          horaInicio,
+          horaFin,
+          citaId: cita.id_cita
+        };
+      });
+
+      return {
+        barberoId,
+        fecha,
+        horasOcupadas,
+        totalCitas: horasOcupadas.length
+      };
+    } catch (error) {
+      console.error('Error al obtener horas ocupadas:', error);
+      throw new BadRequestException('Error al consultar disponibilidad del barbero');
+    }
+  }
+
   async findAll() {
     return await this.citaRepository.find({ relations: ['cliente', 'barbero', 'servicio'] });
   }

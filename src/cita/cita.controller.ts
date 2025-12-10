@@ -19,17 +19,31 @@ export class CitaController {
     return this.citaService.findAll();
   }
 
+  // ✅ Rutas específicas primero
+  @Get('barbero/:barberoId/ocupadas/:fecha')
+  async obtenerHorasOcupadasBarbero(
+    @Param('barberoId') barberoId: string,
+    @Param('fecha') fecha: string
+  ) {
+    return this.citaService.obtenerHorasOcupadasBarbero(+barberoId, fecha);
+  }
+
+  @Get(':fecha/:hora/:idservicio')
+  findhorario(
+    @Param('fecha') fecha: Date, 
+    @Param('hora') hora: string, 
+    @Param('idservicio') idservicio: string
+  ) {
+    return this.citaService.obtenerBarberosDisponiblesParaCita(fecha, hora, +idservicio);
+  }
+
+  // ✅ Ruta genérica :id al final de los GET
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.citaService.findOne(+id);
   }
 
-  @Get(':fecha/:hora/:idservicio')
-  findhorario(@Param('fecha') fecha: Date, @Param('hora') hora : string, @Param('idservicio') idservicio : string) {
-    return this.citaService.obtenerBarberosDisponiblesParaCita(fecha,hora,+idservicio);
-  }
-
-  // ✨ NUEVO: Endpoint para actualizar el estado de una cita
+  // PATCH están bien, porque son más específicos
   @Patch(':id/estado')
   actualizarEstado(
     @Param('id') id: string, 
@@ -38,13 +52,11 @@ export class CitaController {
     return this.citaService.actualizarEstado(+id, updateEstadoDto);
   }
 
-  // ✨ NUEVO: Endpoint conveniente para cancelar cita
   @Patch(':id/cancelar')
   cancelarCita(@Param('id') id: string) {
     return this.citaService.cancelarCita(+id);
   }
 
-  // ✨ NUEVO: Endpoint conveniente para completar cita (barberos/admin)
   @Patch(':id/completar')
   completarCita(@Param('id') id: string) {
     return this.citaService.completarCita(+id);
