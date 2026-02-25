@@ -13,13 +13,26 @@ export class ProductoService {
   ) {}
 
   async create(createProductoDto: CreateProductoDto) {
+    // if codigo provided, verify it's not already used
+    if (createProductoDto.codigo) {
+      const existing = await this.productoRepository.findOne({ where: { codigo: createProductoDto.codigo } });
+      if (existing) {
+        throw new Error(`Ya existe un producto con el código ${createProductoDto.codigo}`);
+      }
+    }
+
     const producto = this.productoRepository.create(createProductoDto);
     return await this.productoRepository.save(producto);
   }
 
-  async findAll() {
+  async findAll(onlyPublished = false) {
+    const whereClause: any = {};
+    if (onlyPublished) {
+      whereClause.publicado = true;
+    }
     return await this.productoRepository.find({
-      relations: ['categoria']
+      where: whereClause,
+      relations: ['categoria'],
     });
   }
 

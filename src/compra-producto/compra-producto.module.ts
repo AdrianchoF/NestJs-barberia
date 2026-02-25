@@ -4,11 +4,12 @@ import { CompraProductoController } from './compra-producto.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CompraProducto } from './entities/compra-producto.entity';
 import { DetalleCompra } from 'src/detalle-compra/entities/detalle-compra.entity';
+import { StockHistorico } from 'src/stock-historico/entities/stock-historico.entity';
 import { ProductoModule } from 'src/producto/producto.module';
 import { ProveedorModule } from 'src/proveedor/proveedor.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CompraProducto, DetalleCompra]),
+  imports: [TypeOrmModule.forFeature([CompraProducto, DetalleCompra, StockHistorico]),
     ProductoModule,
     ProveedorModule,
   ],

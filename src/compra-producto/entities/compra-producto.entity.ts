@@ -10,6 +10,12 @@ export class CompraProducto {
     @Column()
     fecha_compra: Date;
 
+    @Column({ length: 50, default: 'pendiente' })
+    estado: string;
+
+    @Column({ nullable: true })
+    fecha_entrega: Date;
+
     @ManyToOne(() => Proveedor, proveedor => proveedor.compras, { eager: true })
     @JoinColumn({ name: "id_proveedor" })
     proveedor: Proveedor;

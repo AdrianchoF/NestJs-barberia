@@ -1,6 +1,11 @@
-import { IsNotEmpty, IsNumber, IsString, MaxLength } from "class-validator";
+import { IsNotEmpty, IsNumber, IsString, MaxLength, IsOptional, IsBoolean } from "class-validator";
 
 export class CreateProductoDto {
+    @IsOptional()
+    @IsString()
+    @MaxLength(50)
+    codigo?: string;
+
     @IsNotEmpty()
     @IsString()
     @MaxLength(100)
@@ -27,4 +32,20 @@ export class CreateProductoDto {
     @IsNotEmpty()
     @IsNumber()
     categoriaId: number;
+
+    @IsOptional()
+    @IsNumber()
+    precio_costo?: number;
+
+    @IsOptional()
+    @IsNumber()
+    stock_minimo?: number;
+
+    @IsOptional()
+    @IsBoolean()
+    publicado?: boolean;
+
+    @IsOptional()
+    @IsNumber()
+    precio_venta?: number;
 }

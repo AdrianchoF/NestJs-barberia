@@ -1,11 +1,12 @@
 import { Type } from 'class-transformer';
-import { ValidateNested, IsArray, IsDateString, IsNumber, IsNotEmpty } from 'class-validator';
+import { ValidateNested, IsArray, IsDateString, IsNumber, IsNotEmpty, IsOptional } from 'class-validator';
 import { CreateDetalleCompraDto } from '../../detalle-compra/dto/create-detalle-compra.dto';
 
 export class CreateCompraProductoDto {
 
+    @IsOptional()
     @IsDateString()
-    fecha_compra: string; // Fecha de la compra
+    fecha_compra?: string; // Fecha de la compra
 
     @IsNumber()
     @IsNotEmpty()
