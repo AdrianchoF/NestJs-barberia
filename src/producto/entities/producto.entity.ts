@@ -37,6 +37,21 @@ export class Producto {
     @Column('varchar', { length: 255, nullable: true })
     imagenUrl?: string | null;
 
+    @Column('text', { nullable: true })
+    descripcionPublica?: string | null;
+
+    @Column('text', { nullable: true })
+    ingredientes?: string | null;
+
+    @Column('text', { nullable: true })
+    modo_uso?: string | null;
+
+    @Column('text', { nullable: true })
+    cantidades?: string | null;
+
+    @Column('simple-array', { nullable: true })
+    beneficios?: string[] | null;
+
     @ManyToOne(() => CategoriaProducto, (categoria: CategoriaProducto) => categoria.productos, { eager: true })
     @JoinColumn({ name: 'categoriaId' })
     categoria: CategoriaProducto;

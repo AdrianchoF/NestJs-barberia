@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, MaxLength, IsOptional, IsBoolean } from "class-validator";
+import { IsNotEmpty, IsNumber, IsString, MaxLength, IsOptional, IsBoolean, IsArray } from "class-validator";
 
 export class CreateProductoDto {
     @IsOptional()
@@ -48,4 +48,25 @@ export class CreateProductoDto {
     @IsOptional()
     @IsNumber()
     precio_venta?: number;
+
+    @IsOptional()
+    @IsString()
+    descripcionPublica?: string;
+
+    @IsOptional()
+    @IsString()
+    ingredientes?: string;
+
+    @IsOptional()
+    @IsString()
+    modo_uso?: string;
+
+    @IsOptional()
+    @IsString()
+    cantidades?: string;
+
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    beneficios?: string[];
 }
