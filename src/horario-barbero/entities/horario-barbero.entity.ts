@@ -1,6 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, } from 'typeorm';
 import { User } from 'src/auth/entities/user.entity';
-import { FranjaHoraria } from 'src/franja-horaria/entities/franja-horaria.entity';
 
 export enum DiaSemana {
     LUNES = 'lunes',
@@ -13,7 +12,7 @@ export enum DiaSemana {
 }
 @Entity()
 export class HorarioBarbero {
-    @PrimaryGeneratedColumn({ name : 'Id_HorarioBarbero' })
+    @PrimaryGeneratedColumn({ name: 'Id_HorarioBarbero' })
     id: number;
 
     @ManyToOne(() => User)
@@ -25,9 +24,11 @@ export class HorarioBarbero {
         enum: DiaSemana,
         default: DiaSemana.LUNES
     })
-    Dia_semana:DiaSemana;
+    Dia_semana: DiaSemana;
 
-    @ManyToOne(() => FranjaHoraria)
-    @JoinColumn({ name: 'Id_Franja' })
-    franja: FranjaHoraria;
+    @Column({ type: 'time' })
+    hora_inicio: string;
+
+    @Column({ type: 'time' })
+    hora_fin: string;
 }

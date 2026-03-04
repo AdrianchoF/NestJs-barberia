@@ -7,11 +7,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { HorarioBarbero } from 'src/horario-barbero/entities/horario-barbero.entity';
-import { FranjaHoraria } from 'src/franja-horaria/entities/franja-horaria.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, HorarioBarbero, FranjaHoraria]),
+    TypeOrmModule.forFeature([User, HorarioBarbero]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -26,4 +25,4 @@ import { FranjaHoraria } from 'src/franja-horaria/entities/franja-horaria.entity
   providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule { }

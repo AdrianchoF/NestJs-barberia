@@ -9,7 +9,11 @@ export class CreateHorarioBarberoDto {
     @IsNotEmpty({ message: 'El ID del dia es obligatorio' })
     diasemana: DiaSemana;
 
-    @IsInt({ message: 'El ID de la franja horaria debe ser un numero' })
-    @IsNotEmpty({ message: 'El ID de la franja horaria es obligatorio' })
-    idFranja: number;
+    @IsString({ message: 'La hora de inicio debe ser una cadena' })
+    @IsNotEmpty({ message: 'La hora de inicio es obligatoria' })
+    hora_inicio: string;
+
+    @IsString({ message: 'La hora de fin debe ser una cadena' })
+    @IsNotEmpty({ message: 'La hora de fin es obligatoria' })
+    hora_fin: string;
 }

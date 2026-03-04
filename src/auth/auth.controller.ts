@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Request, Get, Param, Patch, Delete, Res, ParseIntPipe } from '@nestjs/common';
 import { Response } from 'express';
-import { AuthService } from './auth.service';
+import { AuthService, CreateBarberWithScheduleDto } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -9,7 +9,7 @@ import { Role } from './entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
@@ -17,10 +17,8 @@ export class AuthController {
   }
 
   @Post('register-barber')
-  async registerBarber(@Body() registerDto: RegisterDto) {
-    // fuerza role barbero
-    registerDto.role = Role.BARBERO;
-    return this.authService.register(registerDto);
+  async registerBarber(@Body() dto: CreateBarberWithScheduleDto) {
+    return this.authService.registerBarberWithSchedule(dto);
   }
 
   @Post('register-barber-with-schedule')
@@ -41,7 +39,7 @@ export class AuthController {
     });
 
     // 🎯 DEVOLVER TAMBIÉN LOS DATOS DEL USUARIO
-    return res.json({ 
+    return res.json({
       message: 'Login exitoso',
       user: token.user // Asegúrate de que tu authService.login devuelva también el usuario
     });
@@ -73,5 +71,5 @@ export class AuthController {
   remove(@Param('id') id: string) {
     return this.authService.remove(+id);
   }
-  
+
 }

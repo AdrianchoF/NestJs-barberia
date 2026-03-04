@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role, User } from './entities/user.entity';
@@ -7,19 +7,56 @@ import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { HorarioBarbero } from 'src/horario-barbero/entities/horario-barbero.entity';
-import { FranjaHoraria } from 'src/franja-horaria/entities/franja-horaria.entity';
+import { IsString, IsOptional, IsArray, ValidateNested, IsNotEmpty, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class HorarioDto {
+  @IsNotEmpty()
+  @IsString()
+  diasemana: string;
+
+  @IsNotEmpty()
+  @IsString()
+  hora_inicio: string;
+
+  @IsNotEmpty()
+  @IsString()
+  hora_fin: string;
+}
 
 export class CreateBarberWithScheduleDto {
+  @IsNotEmpty()
+  @IsString()
+  @Length(2, 100)
   nombre: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Length(2, 100)
   apellido: string;
+
+  @IsNotEmpty()
+  @IsString()
   email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Length(6, 100)
   password: string;
-  telefono: string;
+
+  @IsOptional()
+  @IsString()
+  telefono?: string;
+
+  @IsOptional()
+  @IsString()
   foto?: string;
-  horarios: Array<{
-    diasemana: string;
-    idFranja: number;
-  }>;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HorarioDto)
+  horarios?: HorarioDto[];
 }
 
 @Injectable()
@@ -29,14 +66,12 @@ export class AuthService {
     private usersRepository: Repository<User>,
     @InjectRepository(HorarioBarbero)
     private readonly horarioBarberoRepository: Repository<HorarioBarbero>,
-    @InjectRepository(FranjaHoraria)
-    private readonly franjaHorariaRepository: Repository<FranjaHoraria>,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async register(registerDto: RegisterDto): Promise<User> {
-    const { email, password, nombre, apellido, telefono, foto,  role } = registerDto;
-    
+    const { email, password, nombre, apellido, telefono, foto, role } = registerDto;
+
     const existingUser = await this.usersRepository.findOne({ where: { email } });
     if (existingUser) {
       throw new BadRequestException('Este Email ya existe');
@@ -105,22 +140,12 @@ export class AuthService {
         const horariosGuardados: HorarioBarbero[] = [];
 
         for (const horario of horarios) {
-          // Obtener la entidad FranjaHoraria completa
-          const franja = await this.franjaHorariaRepository.findOne({
-            where: { id_franja: horario.idFranja },
-          });
-
-          if (!franja) {
-            throw new BadRequestException(
-              `La franja horaria con ID ${horario.idFranja} no existe`,
-            );
-          }
-
-          // Crear el horario con la franja completa
+          // Crear el horario con los datos locales
           const nuevoHorario = this.horarioBarberoRepository.create({
             barbero: savedBarber,
             Dia_semana: horario.diasemana as any,
-            franja: franja,
+            hora_inicio: horario.hora_inicio,
+            hora_fin: horario.hora_fin,
           });
 
           const horarioGuardado = await this.horarioBarberoRepository.save(
@@ -151,7 +176,7 @@ export class AuthService {
 
   async login(loginDto: LoginDto): Promise<{ accessToken: string; user: any }> {
     const { email, password } = loginDto;
-    
+
     const user = await this.usersRepository.findOne({ where: { email } });
     if (!user) {
       throw new UnauthorizedException('Credenciales inválidas');
@@ -188,11 +213,11 @@ export class AuthService {
     const cliente = await this.usersRepository.findOne({
       where: { id },
     });
-  
+
     if (!cliente) {
       throw new NotFoundException(`Cliente con ID ${id} no encontrado`);
     }
-  
+
     return cliente;
   }
 

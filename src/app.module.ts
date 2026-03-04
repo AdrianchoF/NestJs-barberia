@@ -4,8 +4,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { ServicioModule } from './servicio/servicio.module';
 import { HorarioBarberoModule } from './horario-barbero/horario-barbero.module';
-
-import { FranjaHorariaModule } from './franja-horaria/franja-horaria.module';
 import { CitaModule } from './cita/cita.module';
 import { ProductoModule } from './producto/producto.module';
 import { CategoriaProductoModule } from './categoria-producto/categoria-producto.module';
@@ -33,7 +31,6 @@ import { CategoriaServicioModule } from './categoria-servicio/categoria-servicio
     AuthModule,
     ServicioModule,
     HorarioBarberoModule,
-    FranjaHorariaModule,
     CitaModule,
     ProductoModule,
     CategoriaProductoModule,
@@ -43,4 +40,4 @@ import { CategoriaServicioModule } from './categoria-servicio/categoria-servicio
     CategoriaServicioModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
