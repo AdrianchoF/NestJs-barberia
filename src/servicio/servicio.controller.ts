@@ -5,7 +5,7 @@ import { UpdateServicioDto } from './dto/update-servicio.dto';
 
 @Controller('servicio')
 export class ServicioController {
-  constructor(private readonly servicioService: ServicioService) {}
+  constructor(private readonly servicioService: ServicioService) { }
 
   @Post()
   create(@Body() createServicioDto: CreateServicioDto) {
@@ -22,10 +22,10 @@ export class ServicioController {
     return this.servicioService.findOne(+id);
   }
 
-  /* @Patch(':id')
+  @Patch(':id')
   update(@Param('id') id: string, @Body() updateServicioDto: UpdateServicioDto) {
     return this.servicioService.update(+id, updateServicioDto);
-  } */
+  }
 
   @Delete(':id')
   remove(@Param('id') id: string) {

@@ -10,7 +10,7 @@ export class ServicioService {
   constructor(
     @InjectRepository(Servicio)
     private readonly servicioRepository: Repository<Servicio>,
-  ) {}
+  ) { }
 
   async create(createServicioDto: CreateServicioDto): Promise<Servicio> {
     const dto = {
@@ -29,7 +29,7 @@ export class ServicioService {
 
   async findOne(id: number) {
     const servicio = await this.servicioRepository.findOne({
-      where : { id },
+      where: { id },
       relations: ['categoria']
     })
 
@@ -39,9 +39,11 @@ export class ServicioService {
     return servicio
   }
 
-  /* update(id: number, updateServicioDto: UpdateServicioDto) {
-    return `This action updates a #${id} servicio`;
-  } */
+  async update(id: number, updateServicioDto: UpdateServicioDto) {
+    const servicio = await this.findOne(id);
+    const updated = Object.assign(servicio, updateServicioDto);
+    return await this.servicioRepository.save(updated);
+  }
 
   async remove(id: number) {
     const servicio = await this.findOne(id);

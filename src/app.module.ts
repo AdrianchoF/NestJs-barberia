@@ -11,6 +11,7 @@ import { ProveedorModule } from './proveedor/proveedor.module';
 import { CompraProductoModule } from './compra-producto/compra-producto.module';
 import { DetalleCompraModule } from './detalle-compra/detalle-compra.module';
 import { CategoriaServicioModule } from './categoria-servicio/categoria-servicio.module';
+import { CintaPromocionalModule } from './cinta-promocional/cinta-promocional.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { CategoriaServicioModule } from './categoria-servicio/categoria-servicio
     CompraProductoModule,
     DetalleCompraModule,
     CategoriaServicioModule,
+    CintaPromocionalModule,
   ],
 })
 export class AppModule { }

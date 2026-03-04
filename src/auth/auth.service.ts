@@ -61,6 +61,9 @@ export class CreateBarberWithScheduleDto {
 
 @Injectable()
 export class AuthService {
+  update(id: number, updateDto: any) {
+    throw new Error('Method not implemented.');
+  }
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,

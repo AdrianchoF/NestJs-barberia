@@ -18,12 +18,18 @@ export class Servicio {
     @Column({ type: 'time' })
     duracionAprox: string;
 
+    @Column({ default: false })
+    esDestacado: boolean;
+
+    @Column({ nullable: true })
+    videoUrl: string;
+
     // ✅ PRIMERO la columna (y hacerla nullable por si acaso)
     @Column({ nullable: true })
     categoriaId: number;
 
     // ✅ DESPUÉS la relación
-    @ManyToOne(() => CategoriaServicio, (categoria: CategoriaServicio) => categoria.servicios, { 
+    @ManyToOne(() => CategoriaServicio, (categoria: CategoriaServicio) => categoria.servicios, {
         eager: true,
         nullable: true  // Permite null
     })

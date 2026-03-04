@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, Min, MaxLength, Matches } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, Min, MaxLength, Matches, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateServicioDto {
     @IsString()
@@ -22,5 +22,14 @@ export class CreateServicioDto {
 
     @IsNotEmpty()
     @IsNumber()
+    @Min(1)
     categoriaId: number;
+
+    @IsOptional()
+    @IsBoolean()
+    esDestacado?: boolean;
+
+    @IsOptional()
+    @IsString()
+    videoUrl?: string;
 }
