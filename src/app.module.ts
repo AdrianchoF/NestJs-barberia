@@ -12,6 +12,7 @@ import { CompraProductoModule } from './compra-producto/compra-producto.module';
 import { DetalleCompraModule } from './detalle-compra/detalle-compra.module';
 import { CategoriaServicioModule } from './categoria-servicio/categoria-servicio.module';
 import { CintaPromocionalModule } from './cinta-promocional/cinta-promocional.module';
+import { ConfiguracionModule } from './configuracion/configuracion.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { CintaPromocionalModule } from './cinta-promocional/cinta-promocional.mo
     DetalleCompraModule,
     CategoriaServicioModule,
     CintaPromocionalModule,
+    ConfiguracionModule,
   ],
 })
 export class AppModule { }

@@ -6,7 +6,7 @@ export class StockHistorico {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => Producto, producto => producto.id, { eager: true })
+    @ManyToOne(() => Producto, producto => producto.id, { eager: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'producto_id' })
     producto: Producto;
 

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,14 +10,20 @@ export class ProductoService {
   constructor(
     @InjectRepository(Producto)
     private readonly productoRepository: Repository<Producto>,
-  ) {}
+  ) { }
 
   async create(createProductoDto: CreateProductoDto) {
+    // Verify name uniqueness
+    const existingName = await this.productoRepository.findOne({ where: { nombre: createProductoDto.nombre } });
+    if (existingName) {
+      throw new ConflictException(`Ya existe un producto con el nombre "${createProductoDto.nombre}". Verifica si es el mismo producto.`);
+    }
+
     // if codigo provided, verify it's not already used
     if (createProductoDto.codigo) {
-      const existing = await this.productoRepository.findOne({ where: { codigo: createProductoDto.codigo } });
-      if (existing) {
-        throw new Error(`Ya existe un producto con el código ${createProductoDto.codigo}`);
+      const existingCode = await this.productoRepository.findOne({ where: { codigo: createProductoDto.codigo } });
+      if (existingCode) {
+        throw new ConflictException(`Ya existe un producto con el código ${createProductoDto.codigo}`);
       }
     }
 
@@ -49,6 +55,24 @@ export class ProductoService {
   }
 
   async update(id: number, updateProductoDto: UpdateProductoDto) {
+    const current = await this.findOne(id);
+
+    // Check name uniqueness if changed
+    if (updateProductoDto.nombre && updateProductoDto.nombre !== current.nombre) {
+      const existingName = await this.productoRepository.findOne({ where: { nombre: updateProductoDto.nombre } });
+      if (existingName) {
+        throw new ConflictException(`Ya existe otro producto con el nombre "${updateProductoDto.nombre}".`);
+      }
+    }
+
+    // Check code uniqueness if changed
+    if (updateProductoDto.codigo && updateProductoDto.codigo !== current.codigo) {
+      const existingCode = await this.productoRepository.findOne({ where: { codigo: updateProductoDto.codigo } });
+      if (existingCode) {
+        throw new ConflictException(`Ya existe otro producto con el código ${updateProductoDto.codigo}.`);
+      }
+    }
+
     await this.productoRepository.update(id, updateProductoDto);
     return this.findOne(id);
   }

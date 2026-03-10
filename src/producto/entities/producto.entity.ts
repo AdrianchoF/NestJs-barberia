@@ -34,7 +34,7 @@ export class Producto {
     @Column('decimal', { precision: 10, scale: 2, nullable: true })
     precio_venta?: number;
 
-    @Column('varchar', { length: 255, nullable: true })
+    @Column('longtext', { nullable: true })
     imagenUrl?: string | null;
 
     @Column('text', { nullable: true })

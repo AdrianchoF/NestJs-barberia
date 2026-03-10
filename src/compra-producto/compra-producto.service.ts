@@ -29,7 +29,7 @@ export class CompraProductoService {
 
     @InjectRepository(StockHistorico)
     private readonly stockHistoricoRepository: Repository<StockHistorico>,
-  ) {}
+  ) { }
 
   async create(createCompraProductoDto: CreateCompraProductoDto) {
     const { id_proveedor, detalles } = createCompraProductoDto;
@@ -100,9 +100,9 @@ export class CompraProductoService {
 
   // marca una compra como entregada y actualiza stocks / crea productos según código
   async marcarEntregada(id: number, fecha_entrega?: Date) {
-    const compra = await this.compraRepository.findOne({ 
-      where: { id_compra: id }, 
-      relations: ['detalles', 'proveedor'] 
+    const compra = await this.compraRepository.findOne({
+      where: { id_compra: id },
+      relations: ['detalles', 'proveedor']
     });
     if (!compra) throw new NotFoundException('Compra no encontrada');
     if (compra.estado === 'entregada') throw new Error('La compra ya está marcada como entregada');
@@ -119,39 +119,29 @@ export class CompraProductoService {
         producto = await this.productoRepository.findOne({ where: { codigo: detalle.codigo_producto } });
       }
 
-      // Si el producto no existe, crearlo automáticamente
-      if (!producto && detalle.nombre_producto) {
-        producto = this.productoRepository.create({
-          nombre: detalle.nombre_producto,
-          descripcion: detalle.descripcion_producto || '',
-          precio: detalle.precio_unitario || 0,
-          stock: 0,
-          precio_costo: detalle.precio_unitario || 0,
-          stock_minimo: 0,
-          codigo: detalle.codigo_producto || undefined,
-        });
-        await this.productoRepository.save(producto);
-        console.log(`Producto creado automáticamente: ${producto.nombre}`);
+      // Si el producto no existe, ya no se crea automáticamente. 
+      // La integridad depende de que el usuario lo seleccione manualmente en el frontend.
+      if (!producto) {
+        console.warn(`Producto no asociado en el detalle de compra. Saltando actualización de stock.`);
+        continue;
       }
-
-      if (!producto) continue; // Si aún no hay producto, saltar
 
       const cantidadRecibida = detalle.cantidad_recibida ?? detalle.cantidad;
       const precioUnitario = detalle.precio_unitario || 0;
 
-      // Calcular promedio ponderado
+      // Calcular promedio ponderado o asignar precio directo si no hay stock previo
       const stockViejo = producto.stock || 0;
       const costoViejo = producto.precio_costo || 0;
 
-      let nuevoCosto = costoViejo;
-      if (stockViejo + cantidadRecibida > 0) {
-        nuevoCosto =
-          (stockViejo * costoViejo + cantidadRecibida * precioUnitario) / (stockViejo + cantidadRecibida);
+      let nuevoCosto = precioUnitario;
+      if (stockViejo > 0) {
+        nuevoCosto = (stockViejo * costoViejo + cantidadRecibida * precioUnitario) / (stockViejo + cantidadRecibida);
       }
 
       // Actualizar stock y precio_costo
       producto.stock = stockViejo + cantidadRecibida;
       producto.precio_costo = nuevoCosto;
+      producto.precio = nuevoCosto; // Sincronizar con el precio base del catálogo
       await this.productoRepository.save(producto);
 
       // Guardar histórico con precio_unitario
@@ -193,115 +183,22 @@ export class CompraProductoService {
     return `This action updates a #${id} compraProducto`;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} compraProducto`;
-  }
+  async remove(id: number) {
+    const compra = await this.compraRepository.findOne({
+      where: { id_compra: id },
+      relations: ['detalles']
+    });
 
-  // Heuristic parser for pasted confirmation text (MVP)
-  async parseConfirmationText(id: number, text: string) {
-    if (!text) return [];
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    const parsed: any[] = [];
-
-    for (let line of lines) {
-      // try to extract a product code if user included "cod" or "codigo" or as first token
-      let codigo: string | null = null;
-      const codeMatch = line.match(/(?:cod(?:igo)?\s*[:\-]?\s*([A-Za-z0-9\-]+))/i);
-      if (codeMatch) {
-        codigo = codeMatch[1];
-        line = line.replace(codeMatch[0], '');
-      }
-      // fallback: first token alphanumeric with letters
-      if (!codigo) {
-        const tokens = line.split(/\s+/);
-        if (tokens.length > 0 && /^[A-Za-z0-9\-]+$/.test(tokens[0]) && !/^\d+$/.test(tokens[0])) {
-          codigo = tokens[0];
-          tokens.shift();
-          line = tokens.join(' ');
-        }
-      }
-
-      // Find numbers (integer or decimal)
-      const numberMatches = (line.match(/[\d]+(?:[.,]\d+)?/g) ?? []) as string[];
-
-      let cantidad = 1;
-      let precio: number | null = null;
-
-      if (numberMatches.length >= 2) {
-        // assume first is qty, last is price
-        const first = (numberMatches[0] || '').replace(',', '.');
-        const last = (numberMatches[numberMatches.length - 1] || '').replace(',', '.');
-        cantidad = Math.round(Number(first)) || 1;
-        precio = Number(last) || null;
-      } else if (numberMatches.length === 1) {
-        const single = (numberMatches[0] || '').replace(',', '.');
-        // if contains decimal, likely price
-        if (single.indexOf('.') !== -1) {
-          precio = Number(single) || null;
-          cantidad = 1;
-        } else {
-          cantidad = Math.round(Number(single)) || 1;
-        }
-      }
-
-      // Build name by removing numbers, x, currency symbols and common separators
-      let nombre = line.replace(/[\d]+(?:[.,]\d+)?/g, '');
-      nombre = nombre.replace(/x|X|\*|-/g, ' ');
-      nombre = nombre.replace(/\$|€|₡|₽|£/g, '');
-      nombre = nombre.replace(/[\s]{2,}/g, ' ').trim();
-      if (!nombre) nombre = 'Producto';
-
-      parsed.push({
-        codigo_producto: codigo,
-        nombre_producto: nombre,
-        cantidad,
-        precio_unitario: precio,
-        subtotal: precio ? cantidad * precio : null,
-      });
+    if (!compra) {
+      throw new NotFoundException('Compra no encontrada');
     }
 
-    return parsed;
-  }
-
-  // parse uploaded confirmation file (pdf, docx, txt, etc.)
-  // file is typed as any to avoid Multer/Express type mismatches across environments
-  async parseConfirmationFile(id: number, file: any) {
-    if (!file || !file.buffer) return [];
-    let text = '';
-
-    const mime = file.mimetype || '';
-    try {
-      if (mime === 'application/pdf') {
-        try {
-          const pdfParseModule: any = await import('pdf-parse');
-          const data: any = await pdfParseModule.default(file.buffer);
-          text = data?.text || '';
-        } catch (e) {
-          console.warn('pdf-parse not available or failed:', e);
-        }
-      } else if (
-        mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-        mime === 'application/msword'
-      ) {
-        try {
-          const mammothModule: any = await import('mammoth');
-          const res = await mammothModule.extractRawText({ buffer: file.buffer });
-          text = res?.value || '';
-        } catch (e) {
-          console.warn('mammoth not available or failed:', e);
-        }
-      } else if (mime.startsWith('text/')) {
-        text = file.buffer.toString('utf8');
-      } else {
-        // Fallback: try to treat as utf8 text
-        text = file.buffer.toString('utf8');
-      }
-    } catch (err) {
-      console.warn('Error parsing file:', err);
-      text = '';
+    if (compra.estado !== 'pendiente') {
+      throw new Error('Solo se pueden eliminar compras en estado pendiente');
     }
 
-    return this.parseConfirmationText(id, text);
+    // La eliminación de detalles es automática por cascade: true en la entidad
+    return await this.compraRepository.remove(compra);
   }
 
   // Add parsed detalles to an existing compra (will keep producto null if no id provided)

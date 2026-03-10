@@ -24,10 +24,9 @@ export class CreateProductoDto {
     @IsNumber()
     stock: number;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsString()
-    @MaxLength(500)
-    imagenUrl: string;
+    imagenUrl?: string;
 
     @IsNotEmpty()
     @IsNumber()
