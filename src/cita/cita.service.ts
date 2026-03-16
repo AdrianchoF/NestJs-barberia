@@ -421,14 +421,13 @@ export class CitaService {
         .andWhere('cita.estado != :estadoCancelada', { estadoCancelada: 'cancelada' }) // Excluir canceladas
         .getMany();
 
-      // Calcular rangos de tiempo ocupados
       const horasOcupadas = citas.map(cita => {
-        const horaInicio = cita.hora.toString();
-        const horaFin = this.sumTimes([horaInicio, cita.servicio.duracionAprox.toString()]);
+        const hora_inicio = cita.hora.toString();
+        const hora_fin = this.sumTimes([hora_inicio, cita.servicio.duracionAprox.toString()]);
         
         return {
-          horaInicio,
-          horaFin,
+          hora_inicio,
+          hora_fin,
           citaId: cita.id_cita
         };
       });
