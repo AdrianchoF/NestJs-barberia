@@ -25,7 +25,7 @@ export class User {
   @Exclude()
   password: string;
 
-  @Column({ type: 'varchar', length: 15})
+  @Column({ type: 'varchar', length: 15, nullable: true })
   telefono: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })

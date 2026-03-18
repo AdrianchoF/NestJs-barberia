@@ -233,4 +233,44 @@ export class AuthService {
   async findUserById(id: number) {
     return this.usersRepository.findOne({ where: { id } });
   }
+
+  async loginWithGoogle(profile: any) {
+    const { email, firstName, lastName, picture } = profile;
+
+    let user = await this.usersRepository.findOne({ where: { email } });
+
+    if (!user) {
+      // Si el usuario no existe, lo creamos
+      // Generamos una contraseña aleatoria ya que es obligatoria en la bd para este esquema
+      const randomPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), 10);
+
+      user = this.usersRepository.create({
+        email,
+        nombre: firstName,
+        apellido: lastName,
+        password: randomPassword,
+        foto: picture,
+        // telefono: '', // Ya es nullable
+        role: Role.CLIENTE,
+        activo: true,
+      });
+
+      user = await this.usersRepository.save(user);
+    }
+
+    // Generamos el token local
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    const accessToken = await this.jwtService.signAsync(payload);
+
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        nombre: user.nombre,
+        apellido: user.apellido,
+        role: user.role,
+      },
+    };
+  }
 }
