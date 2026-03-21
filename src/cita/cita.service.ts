@@ -9,6 +9,7 @@ import { DiaSemana, HorarioBarbero } from 'src/horario-barbero/entities/horario-
 import { HorarioBarberoService } from 'src/horario-barbero/horario-barbero.service';
 import { Cita, EstadoCita } from './entities/cita.entity';
 import { Duration } from 'luxon';
+import { MailService } from 'src/mail/mail.service';
 @Injectable()
 export class CitaService {
   constructor(
@@ -19,6 +20,7 @@ export class CitaService {
     private readonly citaRepository: Repository<Cita>,
 
     private readonly horarioBarberoService: HorarioBarberoService,
+    private readonly mailService: MailService,
   ) {}
 
   async create(createCitaDto: CreateCitaDto) {
@@ -31,14 +33,14 @@ export class CitaService {
     throw new BadRequestException('No se puede agendar una cita en el pasado');
   }
 
-  // Verificar que el cliente existe
-  const cliente = await this.citaRepository.manager.findOne('User', { where: { id: clienteId } });
+  // Verificar que el cliente existe con sus datos completos
+  const cliente = await this.citaRepository.manager.findOne('User', { where: { id: clienteId } }) as any;
   if (!cliente) {
     throw new BadRequestException(`Cliente con ID ${clienteId} no encontrado`);
   }
 
-  // Verificar que el barbero existe
-  const barbero = await this.citaRepository.manager.findOne('User', { where: { id: barberoId } });
+  // Verificar que el barbero existe con sus datos completos
+  const barbero = await this.citaRepository.manager.findOne('User', { where: { id: barberoId } }) as any;
   if (!barbero) {
     throw new BadRequestException(`Barbero con ID ${barberoId} no encontrado`);
   }
@@ -51,6 +53,7 @@ export class CitaService {
 
   // ✅ NUEVO: Procesar cada servicio
   const citasCreadas: Cita[] = [];
+  const nombresServicios: string[] = [];
   let horaActual = hora; // Hora de inicio para la primera cita
 
   for (const idServicio of servicioId) {
@@ -59,6 +62,7 @@ export class CitaService {
     if (!servicio) {
       throw new BadRequestException(`Servicio con ID ${idServicio} no encontrado`);
     }
+    nombresServicios.push(servicio.nombre);
 
     // Calcular hora fin para este servicio
     const horaFin = this.sumTimes([horaActual, servicio.duracionAprox.toString()]);
@@ -98,7 +102,7 @@ export class CitaService {
       servicio,
       hora: horaActual,
       fecha,
-      estado: estado || 'PENDIENTE'
+      estado: estado || 'agendada' // Cambiado a 'agendada' por defecto
     });
 
     const citaGuardada = await this.citaRepository.save(cita);
@@ -106,6 +110,19 @@ export class CitaService {
 
     // ✅ Actualizar hora para el siguiente servicio (si hay más)
     horaActual = horaFin;
+  }
+
+  // 📧 ENVIAR NOTIFICACIÓN POR CORREO
+  if (cliente.email) {
+    const fechaStr = fecha instanceof Date ? (fecha as any).toISOString().split('T')[0] : String(fecha);
+    this.mailService.sendAppointmentConfirmation(
+      cliente.email,
+      cliente.nombre,
+      barbero.nombre,
+      nombresServicios,
+      fechaStr,
+      hora
+    ).catch(err => console.error('Error al enviar notificación:', err));
   }
 
   // ✅ Retornar todas las citas creadas
