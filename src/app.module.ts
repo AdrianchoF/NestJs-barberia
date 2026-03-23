@@ -13,6 +13,7 @@ import { DetalleCompraModule } from './detalle-compra/detalle-compra.module';
 import { CategoriaServicioModule } from './categoria-servicio/categoria-servicio.module';
 import { CintaPromocionalModule } from './cinta-promocional/cinta-promocional.module';
 import { ConfiguracionModule } from './configuracion/configuracion.module';
+import { GlobalSearchModule } from './global-search/global-search.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ConfiguracionModule } from './configuracion/configuracion.module';
     CategoriaServicioModule,
     CintaPromocionalModule,
     ConfiguracionModule,
+    GlobalSearchModule,
   ],
 })
 export class AppModule { }

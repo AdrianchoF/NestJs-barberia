@@ -19,6 +19,45 @@ export class MailService {
     });
   }
 
+  private formatTimeTo12h(time: string): string {
+    if (!time) return '';
+    const [hours, minutes] = time.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const h12 = hours % 12 || 12;
+    return `${h12}:${minutes.toString().padStart(2, '0')} ${period}`;
+  }
+
+  private generateGoogleCalendarUrl(
+    title: string,
+    fecha: string,
+    horaInicio: string,
+    servicios: string[],
+    nombreBarbero: string,
+  ): string {
+    const baseUrl = 'https://www.google.com/calendar/render?action=TEMPLATE';
+    
+    // Formatear fechas para Google (YYYYMMDDTHHmmSS)
+    const cleanFecha = fecha.replace(/-/g, '');
+    const cleanHoraInicio = horaInicio.replace(/:/g, '');
+    
+    // Por ahora asumimos 30 minutos de duración si no tenemos la hora fin exacta, 
+    // pero idealmente deberíamos recibir la hora fin.
+    // Para simplificar, generamos un evento de 30 min por defecto.
+    const start = `${cleanFecha}T${cleanHoraInicio}`;
+    
+    // Calculamos una hora fin simple (30 min después)
+    const [h, m, s] = horaInicio.split(':').map(Number);
+    const date = new Date(2000, 0, 1, h, m, s);
+    date.setMinutes(date.getMinutes() + 30);
+    const cleanHoraFin = date.toTimeString().split(' ')[0].replace(/:/g, '');
+    const end = `${cleanFecha}T${cleanHoraFin}`;
+
+    const details = `Barbero: ${nombreBarbero}\nServicios: ${servicios.join(', ')}`;
+    const location = 'StyleHub Barbería';
+
+    return `${baseUrl}&text=${encodeURIComponent(title)}&dates=${start}/${end}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}`;
+  }
+
   async sendAppointmentConfirmation(
     to: string,
     nombreCliente: string,
@@ -29,6 +68,14 @@ export class MailService {
   ) {
     const appName = 'StyleHub Barberia';
     const serviciosHtml = servicios.map(s => `<li>${s}</li>`).join('');
+    const hora12 = this.formatTimeTo12h(hora);
+    const calendarUrl = this.generateGoogleCalendarUrl(
+      `Cita en ${appName}`,
+      fecha,
+      hora,
+      servicios,
+      nombreBarbero
+    );
 
     const htmlContent = `
       <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
@@ -41,11 +88,17 @@ export class MailService {
           <div style="background-color: rgba(255,255,255,0.05); border: 1px solid #ee6f38; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: left;">
             <p style="margin: 0 0 10px 0;"><strong>Profesional:</strong> ${nombreBarbero}</p>
             <p style="margin: 0 0 10px 0;"><strong>Fecha:</strong> ${fecha}</p>
-            <p style="margin: 0 0 10px 0;"><strong>Hora:</strong> ${hora}</p>
+            <p style="margin: 0 0 10px 0;"><strong>Hora:</strong> ${hora12}</p>
             <p style="margin: 10px 0 5px 0;"><strong>Servicios:</strong></p>
             <ul style="margin: 0; padding-left: 20px;">
               ${serviciosHtml}
             </ul>
+          </div>
+
+          <div style="margin: 30px 0;">
+            <a href="${calendarUrl}" target="_blank" style="background-color: #ee6f38; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              📅 Añadir a Google Calendar
+            </a>
           </div>
 
           <p style="font-size: 14px; color: #888;">Te esperamos 10 minutos antes de tu cita. Si necesitas cancelar, por favor hazlo con al menos 2 horas de anticipación.</p>
