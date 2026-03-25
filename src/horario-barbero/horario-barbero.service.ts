@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DiaSemana, HorarioBarbero } from './entities/horario-barbero.entity';
@@ -14,8 +14,15 @@ export class HorarioBarberoService {
     private readonly userRepository: Repository<User>,
   ) { }
 
-  async create(dto: CreateHorarioBarberoDto) {
+  async create(dto: CreateHorarioBarberoDto, user?: any) {
     const { barberoId, diasemana, hora_inicio, hora_fin } = dto;
+
+    // Validar propiedad (solo el barbero mismo o admin)
+    if (user && user.role !== Role.ADMINISTRADOR) {
+      if (user.id !== barberoId) {
+        throw new ForbiddenException('No tienes permiso para gestionar el horario de otro barbero');
+      }
+    }
 
     // Buscar y asignar la entidad User (barbero)
     const barbero = await this.userRepository.findOne({
@@ -120,8 +127,16 @@ export class HorarioBarberoService {
     return horarios;
   }
 
-  async remove(id: number) {
+  async remove(id: number, user?: any) {
     const horario = await this.findOne(id);
+    
+    // Validar propiedad
+    if (user && user.role !== Role.ADMINISTRADOR) {
+      if (horario.barbero.id !== user.id) {
+        throw new ForbiddenException('No tienes permiso para eliminar el horario de otro barbero');
+      }
+    }
+
     await this.horarioRepository.remove(horario);
     return { message: `Horario con ID ${id} eliminado correctamente` };
   }

@@ -10,6 +10,7 @@ import { HorarioBarberoService } from 'src/horario-barbero/horario-barbero.servi
 import { Cita, EstadoCita } from './entities/cita.entity';
 import { Duration } from 'luxon';
 import { MailService } from 'src/mail/mail.service';
+import { Role } from 'src/auth/entities/user.entity';
 @Injectable()
 export class CitaService {
   constructor(
@@ -112,9 +113,11 @@ export class CitaService {
     horaActual = horaFin;
   }
 
-  // 📧 ENVIAR NOTIFICACIÓN POR CORREO
+  // 📧 ENVIAR NOTIFICACIONES POR CORREO
+  const fechaStr = fecha instanceof Date ? (fecha as any).toISOString().split('T')[0] : String(fecha);
+
+  // 1️⃣ Correo al cliente
   if (cliente.email) {
-    const fechaStr = fecha instanceof Date ? (fecha as any).toISOString().split('T')[0] : String(fecha);
     this.mailService.sendAppointmentConfirmation(
       cliente.email,
       cliente.nombre,
@@ -122,8 +125,46 @@ export class CitaService {
       nombresServicios,
       fechaStr,
       hora
-    ).catch(err => console.error('Error al enviar notificación:', err));
+    ).catch(err => console.error('Error al enviar notificación al cliente:', err));
   }
+
+  // 2️⃣ Correo al barbero
+  if (barbero.email) {
+    this.mailService.sendBarberNotification(
+      barbero.email,
+      barbero.nombre,
+      cliente.nombre,
+      cliente.apellido,
+      cliente.email,
+      nombresServicios,
+      fechaStr,
+      hora
+    ).catch(err => console.error('Error al enviar notificación al barbero:', err));
+  }
+
+  // 3️⃣ Correo al/los administrador(es) — buscados por rol en la BD
+  try {
+    const admins = await this.citaRepository.manager.find('User', { where: { role: Role.ADMINISTRADOR } }) as any[];
+    for (const admin of admins) {
+      if (admin.email) {
+        this.mailService.sendAdminNotification(
+          admin.email,
+          cliente.nombre,
+          cliente.apellido,
+          cliente.email,
+          cliente.telefono,
+          barbero.nombre,
+          barbero.email,
+          nombresServicios,
+          fechaStr,
+          hora
+        ).catch(err => console.error('Error al enviar notificación al admin:', err));
+      }
+    }
+  } catch (err) {
+    console.error('Error al buscar administradores para notificación:', err);
+  }
+
 
   // ✅ Retornar todas las citas creadas
   return {
@@ -359,23 +400,33 @@ export class CitaService {
    * @param updateEstadoDto - DTO con el nuevo estado
    * @returns Cita actualizada
    */
-  async actualizarEstado(id: number, updateEstadoDto: UpdateEstadoCitaDto) {
+  async actualizarEstado(id: number, updateEstadoDto: UpdateEstadoCitaDto, user?: any) {
     const cita = await this.findOne(id);
 
-    // Validar que la cita esté en estado "agendada" para poder cancelarla
+    // 1. Validar propiedad (excepto Admin)
+    if (user && user.role !== Role.ADMINISTRADOR) {
+      if (user.role === Role.BARBERO && cita.barbero.id !== user.id) {
+        throw new ForbiddenException('No tienes permiso para modificar esta cita');
+      }
+      if (user.role === Role.CLIENTE && cita.cliente.id !== user.id) {
+        throw new ForbiddenException('No tienes permiso para modificar esta cita');
+      }
+    }
+
+    // 2. Validar que la cita esté en estado "agendada" para poder cancelarla
     if (updateEstadoDto.estado === 'cancelada' && cita.estado !== 'agendada') {
       throw new BadRequestException(
         'Solo se pueden cancelar citas con estado "agendada"'
       );
     }
 
-    // Validar tiempo de anticipación para cancelaciones (2 horas)
-    if (updateEstadoDto.estado === 'cancelada') {
+    // 3. Validar tiempo de anticipación (solo para CLIENTE)
+    if (updateEstadoDto.estado === 'cancelada' && user?.role === Role.CLIENTE) {
       const ahora = new Date();
       const fechaHoraCita = new Date(`${cita.fecha}T${cita.hora}`);
       const diferenciaHoras = (fechaHoraCita.getTime() - ahora.getTime()) / (1000 * 60 * 60);
 
-      if (diferenciaHoras < 2) {
+      if (diferenciaHoras > 0 && diferenciaHoras < 2) {
         throw new ForbiddenException(
           'No se puede cancelar una cita con menos de 2 horas de anticipación. ' +
           'Por favor, contacta directamente con la barbería.'
@@ -399,8 +450,8 @@ export class CitaService {
    * @param id - ID de la cita
    * @returns Cita cancelada
    */
-  async cancelarCita(id: number) {
-    return this.actualizarEstado(id, { estado: EstadoCita.CANCELADA });
+  async cancelarCita(id: number, user?: any) {
+    return this.actualizarEstado(id, { estado: EstadoCita.CANCELADA }, user);
   }
 
   /**
@@ -408,7 +459,7 @@ export class CitaService {
    * @param id - ID de la cita
    * @returns Cita completada
    */
-  async completarCita(id: number) {
+  async completarCita(id: number, user?: any) {
     const cita = await this.findOne(id);
     
     // Validar que la cita esté agendada
@@ -418,7 +469,7 @@ export class CitaService {
       );
     }
 
-    return this.actualizarEstado(id, { estado: EstadoCita.COMPLETADA });
+    return this.actualizarEstado(id, { estado: EstadoCita.COMPLETADA }, user);
   }
 
   /**
@@ -461,15 +512,47 @@ export class CitaService {
     }
   }
 
-  async findAll() {
-    return await this.citaRepository.find({ relations: ['cliente', 'barbero', 'servicio'] });
+  async findAll(user: any) {
+    const { role, id: userId } = user;
+
+    if (role === Role.ADMINISTRADOR) {
+      return await this.citaRepository.find({ relations: ['cliente', 'barbero', 'servicio'] });
+    }
+
+    if (role === Role.BARBERO) {
+      return await this.citaRepository.find({
+        where: { barbero: { id: userId } },
+        relations: ['cliente', 'barbero', 'servicio']
+      });
+    }
+
+    // Si es CLIENTE, solo sus propias citas
+    return await this.citaRepository.find({
+      where: { cliente: { id: userId } },
+      relations: ['cliente', 'barbero', 'servicio']
+    });
   }
 
-  async findOne(id: number): Promise<Cita> {
-    const cita = await this.citaRepository.findOne({ where: { id_cita: id }, relations: ['cliente', 'barbero', 'servicio'] });
+  async findOne(id: number, user?: any): Promise<Cita> {
+    const cita = await this.citaRepository.findOne({ 
+      where: { id_cita: id }, 
+      relations: ['cliente', 'barbero', 'servicio'] 
+    });
+    
     if (!cita) {
-      throw new Error(`Cita con id ${id} no encontrada`);
+      throw new BadRequestException(`Cita con id ${id} no encontrada`);
     }
+
+    // Si hay un usuario, validar propiedad (excepto admin)
+    if (user && user.role !== Role.ADMINISTRADOR) {
+      if (user.role === Role.BARBERO && cita.barbero.id !== user.id) {
+        throw new ForbiddenException('No tienes permiso para acceder a esta cita');
+      }
+      if (user.role === Role.CLIENTE && cita.cliente.id !== user.id) {
+        throw new ForbiddenException('No tienes permiso para acceder a esta cita');
+      }
+    }
+
     return cita;
   }
 

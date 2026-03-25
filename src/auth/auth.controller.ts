@@ -1,32 +1,45 @@
-import { Controller, Post, Body, Request, Get, Param, Patch, Delete, Res, ParseIntPipe, Req } from '@nestjs/common';
+import { Controller, Post, Body, Request, Get, Param, Patch, Delete, Res, ParseIntPipe, Req, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService, CreateBarberWithScheduleDto } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
-import { UseGuards } from '@nestjs/common';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './decorators/roles.decorator';
 import { Role } from './entities/user.entity';
+import { Public } from './decorators/public.decorator';
 
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) { }
 
+  @Public()
+  @Get('barberos')
+  async findAllBarberos() {
+    return this.authService.findAllBarberos();
+  }
+
+  @Public()
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
   }
 
+  @Roles(Role.ADMINISTRADOR)
   @Post('register-barber')
   async registerBarber(@Body() dto: CreateBarberWithScheduleDto) {
     return this.authService.registerBarberWithSchedule(dto);
   }
 
+  @Roles(Role.ADMINISTRADOR)
   @Post('register-barber-with-schedule')
   async registerBarberWithSchedule(@Body() createBarberWithScheduleDto: any) {
     return this.authService.registerBarberWithSchedule(createBarberWithScheduleDto);
   }
 
+  @Public()
   @Post('login')
   async login(@Body() loginDto: LoginDto, @Res() res: Response) {
     const token = await this.authService.login(loginDto);
@@ -46,25 +59,27 @@ export class AuthController {
     });
   }
 
+  @Public()
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('jwt');
     return { message: 'Logout exitoso' };
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
     return req.user; // este viene del validate() en JwtStrategy
   }
 
   // === RUTAS PARA GOOGLE OAUTH ===
+  @Public()
   @Get('google')
   @UseGuards(GoogleAuthGuard)
   async googleAuth(@Req() req) {
     // Passport redirige automáticamente
   }
 
+  @Public()
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleAuthRedirect(@Req() req, @Res() res: Response) {
@@ -84,24 +99,28 @@ export class AuthController {
     return res.redirect('http://localhost:5173');
   }
 
+  @Roles(Role.ADMINISTRADOR)
   @Get()
   findAll() {
     return this.authService.findAll();
   }
 
+  @Roles(Role.ADMINISTRADOR)
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.authService.findOne(+id);
   }
 
+  @Roles(Role.ADMINISTRADOR)
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() updateDto: any) {
     return this.authService.update(id, updateDto);
   }
 
+  @Roles(Role.ADMINISTRADOR)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.authService.remove(+id);
   }
 
-}
+}
