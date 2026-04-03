@@ -61,8 +61,67 @@ export class CreateBarberWithScheduleDto {
 
 @Injectable()
 export class AuthService {
-  update(id: number, updateDto: any) {
-    throw new Error('Method not implemented.');
+  async update(id: number, updateDto: any) {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+    }
+
+    // Extraer campos especiales
+    const { email, password, horarios, ...rest } = updateDto;
+
+    // 1. Validar unicidad del email si cambia
+    if (email && email !== user.email) {
+      const existingUser = await this.usersRepository.findOne({ where: { email } });
+      if (existingUser) {
+        throw new BadRequestException('Este email ya está en uso por otro usuario');
+      }
+      user.email = email;
+    }
+
+    // 2. Hashear nueva contraseña si se proporciona
+    if (password && password.trim() !== '') {
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    // 3. Actualizar el resto de campos (nombre, apellido, telefono, foto, role, activo, etc.)
+    Object.assign(user, rest);
+
+    // 4. Guardar cambios básicos del usuario
+    const savedUser = await this.usersRepository.save(user);
+
+    // 5. Manejar actualización de horarios si es barbero y vienen en el DTO
+    if (horarios && Array.isArray(horarios) && savedUser.role === Role.BARBERO) {
+      try {
+        // Eliminar horarios anteriores para este barbero
+        await this.horarioBarberoRepository.delete({ barbero: { id: savedUser.id } });
+
+        const horariosGuardados: HorarioBarbero[] = [];
+        for (const h of horarios) {
+          const nuevoHorario = this.horarioBarberoRepository.create({
+            barbero: savedUser,
+            Dia_semana: h.diasemana as any,
+            hora_inicio: h.hora_inicio,
+            hora_fin: h.hora_fin,
+          });
+          horariosGuardados.push(await this.horarioBarberoRepository.save(nuevoHorario));
+        }
+
+        return {
+          user: savedUser,
+          horarios: horariosGuardados,
+          message: 'Barbero y horarios actualizados exitosamente',
+        };
+      } catch (error) {
+        console.error('Error al actualizar horarios:', error);
+        throw new BadRequestException('Error al actualizar los horarios: ' + error.message);
+      }
+    }
+
+    return {
+      user: savedUser,
+      message: 'Usuario actualizado exitosamente',
+    };
   }
   constructor(
     @InjectRepository(User)

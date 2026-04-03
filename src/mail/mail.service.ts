@@ -136,6 +136,7 @@ export class MailService {
     nombreCliente: string,
     apellidoCliente: string,
     emailCliente: string,
+    telefonoCliente: string,
     servicios: string[],
     fecha: string,
     hora: string,
@@ -143,6 +144,13 @@ export class MailService {
     const appName = 'StyleHub Barberia';
     const serviciosHtml = servicios.map(s => `<li>${s}</li>`).join('');
     const hora12 = this.formatTimeTo12h(hora);
+    const calendarUrl = this.generateGoogleCalendarUrl(
+      `Cita: ${nombreCliente} ${apellidoCliente}`,
+      fecha,
+      hora,
+      servicios,
+      nombreBarbero
+    );
 
     const htmlContent = `
       <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
@@ -155,12 +163,19 @@ export class MailService {
           <div style="background-color: rgba(255,255,255,0.05); border: 1px solid #ee6f38; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: left;">
             <p style="margin: 0 0 10px 0;"><strong>👤 Cliente:</strong> ${nombreCliente} ${apellidoCliente}</p>
             <p style="margin: 0 0 10px 0;"><strong>📧 Email del cliente:</strong> ${emailCliente}</p>
+            <p style="margin: 0 0 10px 0;"><strong>📞 Teléfono:</strong> ${telefonoCliente || 'No registrado'}</p>
             <p style="margin: 0 0 10px 0;"><strong>📅 Fecha:</strong> ${fecha}</p>
             <p style="margin: 0 0 10px 0;"><strong>🕐 Hora:</strong> ${hora12}</p>
             <p style="margin: 10px 0 5px 0;"><strong>💈 Servicios:</strong></p>
             <ul style="margin: 0; padding-left: 20px;">
               ${serviciosHtml}
             </ul>
+          </div>
+
+          <div style="margin: 30px 0;">
+            <a href="${calendarUrl}" target="_blank" style="background-color: #ee6f38; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              📅 Añadir a Google Calendar
+            </a>
           </div>
 
           <p style="font-size: 14px; color: #888;">Por favor asegúrate de estar disponible a tiempo. Si tienes algún inconveniente, comunícate con la administración.</p>

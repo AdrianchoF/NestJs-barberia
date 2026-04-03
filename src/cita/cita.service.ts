@@ -136,6 +136,7 @@ export class CitaService {
       cliente.nombre,
       cliente.apellido,
       cliente.email,
+      cliente.telefono,
       nombresServicios,
       fechaStr,
       hora
