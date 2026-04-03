@@ -278,6 +278,13 @@ export class AuthService {
     });
   }
 
+  async findAllBarberosAdmin(): Promise<User[]> {
+    return await this.usersRepository.find({
+      where: { role: Role.BARBERO },
+      order: { nombre: 'ASC' },
+    });
+  }
+
   async findOne(id: number): Promise<User> {
     const cliente = await this.usersRepository.findOne({
       where: { id },
@@ -335,7 +342,7 @@ export class AuthService {
         email: user.email,
         nombre: user.nombre,
         apellido: user.apellido,
-        role: user.role,
+        Role: user.role,
       },
     };
   }

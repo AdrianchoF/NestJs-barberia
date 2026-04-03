@@ -85,6 +85,7 @@ export class HorarioBarberoService {
       .innerJoinAndSelect('horario.barbero', 'barbero')
       .where('horario.Dia_semana = :diaSemana', { diaSemana })
       .andWhere('TIME(:hora) BETWEEN horario.hora_inicio AND horario.hora_fin', { hora })
+      .andWhere('barbero.activo = :activo', { activo: true })
       .getMany();
 
     // Retornar solo los barberos únicos (sin duplicados)

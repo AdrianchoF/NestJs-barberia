@@ -21,6 +21,12 @@ export class AuthController {
     return this.authService.findAllBarberos();
   }
 
+  @Roles(Role.ADMINISTRADOR)
+  @Get('barberos-admin')
+  async findAllBarberosAdmin() {
+    return this.authService.findAllBarberosAdmin();
+  }
+
   @Public()
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
@@ -84,7 +90,7 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleAuthRedirect(@Req() req, @Res() res: Response) {
     const googleUser = req.user;
-    const { accessToken } = await this.authService.loginWithGoogle(googleUser);
+    const { accessToken, user } = await this.authService.loginWithGoogle(googleUser);
 
     // Guardamos el token en una cookie httpOnly (igual que en login normal)
     res.cookie('jwt', accessToken, {
@@ -94,9 +100,13 @@ export class AuthController {
       maxAge: 1000 * 60 * 60, // 1 hora
     });
 
-    // Redirigimos al frontend
-    // Generalmente http://localhost:5173 en desarrollo de Vue
-    return res.redirect('http://localhost:5173');
+    // Redirigimos al frontend según el rol
+    // Si es admin o barbero, al dashboard. Si es cliente, al inicio.
+    const redirectUrl = (user.Role === Role.ADMINISTRADOR || user.Role === Role.BARBERO)
+      ? 'http://localhost:5173/dashboard'
+      : 'http://localhost:5173';
+
+    return res.redirect(redirectUrl);
   }
 
   @Roles(Role.ADMINISTRADOR)
