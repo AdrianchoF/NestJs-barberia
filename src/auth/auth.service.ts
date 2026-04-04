@@ -9,6 +9,7 @@ import { LoginDto } from './dto/login.dto';
 import { HorarioBarbero } from 'src/horario-barbero/entities/horario-barbero.entity';
 import { IsString, IsOptional, IsArray, ValidateNested, IsNotEmpty, Length } from 'class-validator';
 import { Type } from 'class-transformer';
+import { MailService } from 'src/mail/mail.service';
 
 export class HorarioDto {
   @IsNotEmpty()
@@ -118,6 +119,16 @@ export class AuthService {
       }
     }
 
+    // Si el usuario acaba de ser penalizado (activo paso a false y hay motivo/fecha)
+    if (updateDto.activo === false && updateDto.motivoPenalizacion) {
+      await this.mailService.sendPenaltyNotification(
+        savedUser.email,
+        savedUser.nombre,
+        updateDto.motivoPenalizacion,
+        updateDto.penalizadoHasta
+      );
+    }
+
     return {
       user: savedUser,
       message: 'Usuario actualizado exitosamente',
@@ -128,6 +139,7 @@ export class AuthService {
     private usersRepository: Repository<User>,
     @InjectRepository(HorarioBarbero)
     private readonly horarioBarberoRepository: Repository<HorarioBarbero>,
+    private readonly mailService: MailService,
     private jwtService: JwtService,
   ) { }
 
@@ -244,6 +256,29 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
+    // === PROGRAMAR AUTO-REACTIVACIÓN Y CONTROL DE PENALIZACIÓN ===
+    if (user.activo === false) {
+      const now = new Date();
+      if (user.penalizadoHasta && new Date(user.penalizadoHasta) <= now) {
+        // La penalización ya expiró, reactivamos automáticamente
+        user.activo = true;
+        user.penalizadoHasta = undefined;
+        user.motivoPenalizacion = undefined;
+        await this.usersRepository.save(user);
+        // Continuamos con el login normalmente
+      } else {
+        // Sigue penalizado o desactivado manualmente sin fecha definida
+        let errorMessage = 'Tu cuenta ha sido desactivada. Por favor, contacta al administrador.';
+        if (user.motivoPenalizacion) {
+          const dateStr = user.penalizadoHasta 
+            ? new Date(user.penalizadoHasta).toLocaleString() 
+            : 'indefinidamente';
+          errorMessage = `Cuenta suspendida hasta ${dateStr}. Motivo: ${user.motivoPenalizacion}`;
+        }
+        throw new UnauthorizedException(errorMessage);
+      }
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Credenciales inválidas');
@@ -329,6 +364,26 @@ export class AuthService {
       });
 
       user = await this.usersRepository.save(user);
+    }
+
+    // === PROGRAMAR AUTO-REACTIVACIÓN Y CONTROL DE PENALIZACIÓN ===
+    if (user.activo === false) {
+      const now = new Date();
+      if (user.penalizadoHasta && new Date(user.penalizadoHasta) <= now) {
+        user.activo = true;
+        user.penalizadoHasta = undefined;
+        user.motivoPenalizacion = undefined;
+        await this.usersRepository.save(user);
+      } else {
+        let errorMessage = 'Tu cuenta ha sido desactivada.';
+        if (user.motivoPenalizacion) {
+          const dateStr = user.penalizadoHasta 
+            ? new Date(user.penalizadoHasta).toLocaleString() 
+            : 'indefinidamente';
+          errorMessage = `Cuenta suspendida hasta ${dateStr}. Motivo: ${user.motivoPenalizacion}`;
+        }
+        throw new UnauthorizedException(errorMessage);
+      }
     }
 
     // Generamos el token local

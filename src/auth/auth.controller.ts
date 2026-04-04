@@ -89,24 +89,29 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleAuthRedirect(@Req() req, @Res() res: Response) {
-    const googleUser = req.user;
-    const { accessToken, user } = await this.authService.loginWithGoogle(googleUser);
+    try {
+      const googleUser = req.user;
+      const { accessToken, user } = await this.authService.loginWithGoogle(googleUser);
 
-    // Guardamos el token en una cookie httpOnly (igual que en login normal)
-    res.cookie('jwt', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // Cambiamos a lax para permitir la redirección desde Google
-      maxAge: 1000 * 60 * 60, // 1 hora
-    });
+      // Guardamos el token en una cookie httpOnly (igual que en login normal)
+      res.cookie('jwt', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax', // Cambiamos a lax para permitir la redirección desde Google
+        maxAge: 1000 * 60 * 60, // 1 hora
+      });
 
-    // Redirigimos al frontend según el rol
-    // Si es admin o barbero, al dashboard. Si es cliente, al inicio.
-    const redirectUrl = (user.Role === Role.ADMINISTRADOR || user.Role === Role.BARBERO)
-      ? 'http://localhost:5173/dashboard'
-      : 'http://localhost:5173';
+      // Redirigimos al frontend según el rol
+      const redirectUrl = (user.Role === Role.ADMINISTRADOR || user.Role === Role.BARBERO)
+        ? 'http://localhost:5173/dashboard'
+        : 'http://localhost:5173';
 
-    return res.redirect(redirectUrl);
+      return res.redirect(redirectUrl);
+    } catch (error) {
+      // Si la cuenta está desactivada, el error vendrá con el mensaje de penalización
+      const errorMessage = error.response?.message || error.message || 'Error de autenticación';
+      return res.redirect(`http://localhost:5173/login?error=account_deactivated&message=${encodeURIComponent(errorMessage)}`);
+    }
   }
 
   @Roles(Role.ADMINISTRADOR)

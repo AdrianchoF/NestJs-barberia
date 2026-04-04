@@ -272,4 +272,55 @@ export class MailService {
       this.logger.error(`❌ Error al enviar correo al administrador ${to}:`, error);
     }
   }
+
+  async sendPenaltyNotification(
+    to: string,
+    nombreCliente: string,
+    motivo: string,
+    hasta: Date | null,
+  ) {
+    const appName = 'StyleHub Barberia';
+    const dateStr = hasta ? new Date(hasta).toLocaleString() : 'Indefinido';
+
+    const htmlContent = `
+      <div style="font-family: 'Arial', sans-serif; max-width: 600px; margin: 0 auto; background-color: #f4f4f4; padding: 20px;">
+        <div style="background-color: #1a1a1a; padding: 40px; border-radius: 10px; color: white; text-align: center;">
+          <img src="cid:logo" alt="${appName}" style="width: 150px; margin-bottom: 20px;">
+          <h1 style="color: #ee6f38; margin-bottom: 10px;">Notificación de Sanción</h1>
+          <p style="font-size: 18px;">Hola <strong>${nombreCliente}</strong>,</p>
+          <p>Te informamos que tu cuenta en <strong>${appName}</strong> ha sido suspendida temporalmente.</p>
+          
+          <div style="background-color: rgba(255,255,255,0.05); border: 1px solid #ee6f38; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: left;">
+            <p style="margin: 0 0 10px 0;"><strong>Motivo:</strong> ${motivo}</p>
+            <p style="margin: 0 0 10px 0;"><strong>Fecha de reactivación:</strong> ${dateStr}</p>
+          </div>
+
+          <p style="font-size: 14px; color: #888;">Si crees que esto es un error o deseas apelar la decisión, por favor contacta con nosotros directamente en el local.</p>
+          
+          <hr style="border: 0; border-top: 1px solid #333; margin: 30px 0;">
+          
+          <p style="font-size: 12px; color: #666;">&copy; ${new Date().getFullYear()} ${appName} - Gestión de Calidad.</p>
+        </div>
+      </div>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: `"${appName}" <${this.configService.get<string>('MAIL_USER')}>`,
+        to,
+        subject: `Notificación de Suspensión de Cuenta - ${appName}`,
+        html: htmlContent,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: 'c:/Users/felip/OneDrive/Documentos/ProyectoBarberia-Vue/Proyecto_Barberia/public/imagenes/logo/logo2.png',
+            cid: 'logo'
+          }
+        ]
+      });
+      this.logger.log(`✅ Correo de sanción enviado a: ${to}`);
+    } catch (error) {
+      this.logger.error(`❌ Error al enviar correo de sanción a ${to}:`, error);
+    }
+  }
 }

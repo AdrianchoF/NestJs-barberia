@@ -41,6 +41,12 @@ export class User {
   @Column({ default: true })
   activo?: boolean;
 
+  @Column({ type: 'timestamp', nullable: true })
+  penalizadoHasta?: Date;
+
+  @Column({ type: 'text', nullable: true })
+  motivoPenalizacion?: string;
+
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 }
