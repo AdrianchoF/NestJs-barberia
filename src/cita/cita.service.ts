@@ -86,7 +86,7 @@ export class CitaService {
       }
 
       // Buscar otros barberos en el mismo horario
-      const otrosBarberosDisponibles = await this.obtenerBarberosDisponiblesParaCita(fecha, hora, idServicio);
+      const otrosBarberosDisponibles = await this.obtenerBarberosDisponiblesParaCita(fecha, hora, [idServicio]);
 
       return {
         disponible: false,
@@ -176,42 +176,44 @@ export class CitaService {
   };
 }
 
-  async obtenerBarberosDisponiblesParaCita(fecha: Date, hora: string, idServicio: number) {
+  async obtenerBarberosDisponiblesParaCita(fecha: Date, hora: string, servicioIds: number[]) {
     try {
       console.log('=== DEBUG OBTENER BARBEROS DISPONIBLES ===');
-      console.log('Parámetros recibidos:', { fecha, hora, idServicio });
+      console.log('Parámetros recibidos:', { fecha, hora, servicioIds });
 
       // 1. Extraer día de la semana de la fecha
       const diaSemana = this.extraerDiaSemanaDelaFecha(fecha);
       console.log('Día de la semana calculado:', diaSemana);
       
-      // 2. Obtener duración del servicio
-      const servicio = await this.servicioRepository.findOne({ where: { id: idServicio } });
-      if (!servicio) {
-        console.log(`Servicio con ID ${idServicio} no encontrado`);
-        throw new Error(`Servicio con ID ${idServicio} no encontrado`);
+      // 2. Obtener duración TOTAL de todos los servicios
+      let duracionTotal = Duration.fromObject({ hours: 0, minutes: 0, seconds: 0 });
+      for (const idServicio of servicioIds) {
+        const servicio = await this.servicioRepository.findOne({ where: { id: idServicio } });
+        if (servicio) {
+          const [h, m, s] = servicio.duracionAprox.toString().split(':').map(Number);
+          duracionTotal = duracionTotal.plus(Duration.fromObject({ hours: h, minutes: m, seconds: s }));
+        }
       }
-      console.log('Servicio encontrado:', servicio);
+
+      const totalDurationStr = `${Math.floor(duracionTotal.as('hours'))}:${duracionTotal.minutes % 60}:${duracionTotal.seconds % 60}`;
+      console.log('Duración total calculada:', totalDurationStr);
 
       // 3. Calcular rango de tiempo que ocuparía la nueva cita
       const horaFormateada = hora;
-      const times = [hora.toString(), servicio.duracionAprox.toString()];
-      const horaFin = this.sumTimes(times); 
+      const horaFin = this.sumTimes([hora.toString(), totalDurationStr]); 
       console.log('Hora inicio:', horaFormateada, 'Hora fin:', horaFin);
 
       // 4. Obtener barberos que tienen franjas disponibles para este día y hora
       const barberosConFranjas = await this.horarioBarberoService.buscarporDiayHora(diaSemana, horaFormateada);
-      console.log('Barberos con franjas disponibles:', barberosConFranjas);
+      console.log('Barberos con franjas disponibles:', barberosConFranjas.length);
       
       // 5. Filtrar barberos que NO tengan citas que se solapen
-      const barberosDisponibles: number[] = [];
+      const barberosDisponibles: any[] = [];
 
       for (const data of barberosConFranjas) {
-        console.log('Verificando barbero:', data);
-
-        // CORRECCIÓN: Usar Id_RolBarbero en lugar de id
-        const barberoId = data.id; // Soporte para ambos formatos
-        console.log('ID del barbero extraído:', barberoId);
+        // data.barbero contiene el objeto User completo gracias al join en horarioBarberoService
+        const barbero = data; // En este servicio, buscarporDiayHora devuelve barberos únicos directamente
+        const barberoId = barbero.id;
 
         const tieneCitasSolapadas = await this.barberoTieneCitasSolapadas(
           barberoId,
@@ -223,19 +225,17 @@ export class CitaService {
         console.log(`Barbero ${barberoId} tiene citas solapadas:`, tieneCitasSolapadas);
 
         if (!tieneCitasSolapadas) {
-          barberosDisponibles.push(barberoId);
+          barberosDisponibles.push(barbero);
         }
       }
 
+      console.log('Barberos disponibles finales:', barberosDisponibles.length);
 
-      console.log('Barberos disponibles finales:', barberosDisponibles);
-
-      // CAMBIO PRINCIPAL: Retornar el objeto con el formato esperado
       if (barberosDisponibles.length > 0) {
         return {
           disponible: true,
-          barbero_id: barberosDisponibles[0], // Primer barbero disponible
-          barberos_disponibles: barberosDisponibles, // Todos los barberos disponibles
+          barbero_id: barberosDisponibles[0].id,
+          barberos_disponibles: barberosDisponibles,
           total_disponibles: barberosDisponibles.length
         };
       } else {
@@ -340,8 +340,10 @@ export class CitaService {
     const inicio2Min = this.horaAMinutos(inicio2);
     const fin2Min = this.horaAMinutos(fin2);
 
-    // Verificar solapamiento: (inicio1 < fin2) AND (inicio2 < fin1)
-    return (inicio1Min < fin2Min) && (inicio2Min < fin1Min);
+    // Verificar solapamiento con un margen de 10 minutos (BUFFER)
+    // Se considera solapado si: (inicio1 < fin2 + 10) AND (inicio2 < fin1 + 10)
+    const BUFFER = 10;
+    return (inicio1Min < fin2Min + BUFFER) && (inicio2Min < fin1Min + BUFFER);
   }
 
   /**

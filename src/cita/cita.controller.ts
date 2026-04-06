@@ -37,13 +37,14 @@ export class CitaController {
   }
 
   @Public()
-  @Get(':fecha/:hora/:idservicio')
+  @Get('disponibles/:fecha/:hora/:servicios')
   findhorario(
     @Param('fecha') fecha: Date, 
     @Param('hora') hora: string, 
-    @Param('idservicio') idservicio: string
+    @Param('servicios') servicios: string
   ) {
-    return this.citaService.obtenerBarberosDisponiblesParaCita(fecha, hora, +idservicio);
+    const servicioIds = servicios.split(',').map(id => parseInt(id, 10));
+    return this.citaService.obtenerBarberosDisponiblesParaCita(fecha, hora, servicioIds);
   }
 
   // ✅ Ruta genérica :id al final de los GET
