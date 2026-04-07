@@ -37,4 +37,8 @@ export class RegisterDto {
   @IsOptional()
   @IsBoolean({ message: 'El estado activo debe ser verdadero o falso' })
   activo?: boolean;
+
+  @IsOptional()
+  @IsBoolean({ message: 'El campo esBarbero debe ser verdadero o falso' })
+  esBarbero?: boolean;
 }

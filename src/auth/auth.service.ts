@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role, User } from './entities/user.entity';
@@ -61,7 +61,7 @@ export class CreateBarberWithScheduleDto {
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   async update(id: number, updateDto: any) {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) {
@@ -169,7 +169,8 @@ export class AuthService {
       telefono,
       foto,
       role,
-      activo: true
+      activo: true,
+      esBarbero: registerDto.esBarbero ?? false
     });
 
     return await this.usersRepository.save(user);
@@ -296,6 +297,7 @@ export class AuthService {
         nombre: user.nombre,
         apellido: user.apellido,
         Role: user.role,
+        esBarbero: user.esBarbero,
       },
     };
   }
@@ -308,14 +310,20 @@ export class AuthService {
 
   async findAllBarberos(): Promise<User[]> {
     return await this.usersRepository.find({
-      where: { role: Role.BARBERO, activo: true },
+      where: [
+        { role: Role.BARBERO, activo: true },
+        { role: Role.ADMINISTRADOR, esBarbero: true, activo: true }
+      ],
       order: { nombre: 'ASC' },
     });
   }
 
   async findAllBarberosAdmin(): Promise<User[]> {
     return await this.usersRepository.find({
-      where: { role: Role.BARBERO },
+      where: [
+        { role: Role.BARBERO },
+        { role: Role.ADMINISTRADOR, esBarbero: true }
+      ],
       order: { nombre: 'ASC' },
     });
   }
@@ -398,7 +406,51 @@ export class AuthService {
         nombre: user.nombre,
         apellido: user.apellido,
         Role: user.role,
+        esBarbero: user.esBarbero,
       },
     };
+  }
+
+  async onModuleInit() {
+    await this.seedInitialAdmin();
+  }
+
+  private async seedInitialAdmin() {
+    try {
+      const email = process.env.INITIAL_ADMIN_EMAIL || 'admin@barberia.com';
+      const password = process.env.INITIAL_ADMIN_PASSWORD || 'Admin123*';
+
+      // Verificar si ya existe un Super Admin con ese email especifico
+      // o si hay algún usuario con el rol de Super Admin
+      const existingSuper = await this.usersRepository.findOne({
+        where: [
+          { role: Role.SUPER_ADMINISTRADOR },
+          { email: email }
+        ]
+      });
+
+      if (!existingSuper) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const superAdmin = this.usersRepository.create({
+          nombre: 'Super',
+          apellido: 'Admin',
+          email,
+          password: hashedPassword,
+          role: Role.SUPER_ADMINISTRADOR,
+          activo: true,
+          esBarbero: false,
+        });
+
+        await this.usersRepository.save(superAdmin);
+        console.log('✅ --- Super Administrador inicial creado con éxito ---');
+        console.log(`📧 Email: ${email}`);
+        console.log('-------------------------------------------------------');
+      } else {
+        console.log('ℹ️ --- El Super Administrador ya existe en la base de datos ---');
+        console.log(`📧 Email actual: ${existingSuper.email}`);
+      }
+    } catch (error) {
+      console.error('❌ Error durante el seeding del Super Administrador:', error);
+    }
   }
 }

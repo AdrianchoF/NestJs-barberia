@@ -114,25 +114,25 @@ export class AuthController {
     }
   }
 
-  @Roles(Role.ADMINISTRADOR)
+  @Roles(Role.ADMINISTRADOR, Role.SUPER_ADMINISTRADOR)
   @Get()
   findAll() {
     return this.authService.findAll();
   }
 
-  @Roles(Role.ADMINISTRADOR)
+  @Roles(Role.ADMINISTRADOR, Role.SUPER_ADMINISTRADOR)
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.authService.findOne(+id);
   }
 
-  @Roles(Role.ADMINISTRADOR)
+  @Roles(Role.ADMINISTRADOR, Role.SUPER_ADMINISTRADOR)
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() updateDto: any) {
     return this.authService.update(id, updateDto);
   }
 
-  @Roles(Role.ADMINISTRADOR)
+  @Roles(Role.ADMINISTRADOR, Role.SUPER_ADMINISTRADOR)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.authService.remove(+id);

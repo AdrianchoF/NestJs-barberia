@@ -35,6 +35,9 @@ export class Configuracion {
     @Column({ type: 'text', nullable: true })
     horarios: string;
 
+    @Column({ default: true })
+    suscripcionActiva: boolean;
+
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     updatedAt: Date;
 }

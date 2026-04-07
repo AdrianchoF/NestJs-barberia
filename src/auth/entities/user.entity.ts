@@ -2,6 +2,7 @@ import { Exclude } from 'class-transformer';
 import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 
 export enum Role {
+  SUPER_ADMINISTRADOR = 'super-administrador',
   ADMINISTRADOR = 'administrador',
   BARBERO = 'barbero',
   CLIENTE = 'cliente',
@@ -37,6 +38,9 @@ export class User {
     default: Role.CLIENTE
   })
   role:Role;
+
+  @Column({ default: false })
+  esBarbero: boolean;
 
   @Column({ default: true })
   activo?: boolean;

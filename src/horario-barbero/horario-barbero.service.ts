@@ -33,8 +33,8 @@ export class HorarioBarberoService {
       throw new BadRequestException('El barbero no existe');
     }
 
-    if (barbero.role !== Role.BARBERO) {
-      throw new BadRequestException('El usuario no tiene rol de barbero');
+    if (barbero.role !== Role.BARBERO && !barbero.esBarbero) {
+      throw new BadRequestException('El usuario no tiene rol de barbero o no está habilitado como tal');
     }
 
     // Verificar solapamiento de franjas horarias para el mismo barbero y dia
@@ -122,7 +122,7 @@ export class HorarioBarberoService {
     });
 
     if (!horarios || horarios.length === 0) {
-      throw new BadRequestException(`No se encontraron horarios para el barbero con ID ${barberoId}`);
+      return [];
     }
 
     return horarios;
