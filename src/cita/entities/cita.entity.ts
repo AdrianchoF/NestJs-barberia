@@ -39,4 +39,7 @@ export class Cita {
         default: EstadoCita.AGENDADA
     })
     estado: EstadoCita;
+
+    @Column({ type: 'boolean', default: false })
+    calificacionEnviada: boolean;
 }

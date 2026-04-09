@@ -363,7 +363,7 @@ export class AuthService implements OnModuleInit {
       user = this.usersRepository.create({
         email,
         nombre: firstName,
-        apellido: lastName,
+        apellido: lastName || '',
         password: randomPassword,
         foto: picture,
         // telefono: '', // Ya es nullable

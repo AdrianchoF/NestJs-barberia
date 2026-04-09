@@ -67,8 +67,12 @@ export class CitaController {
 
   @Roles(Role.ADMINISTRADOR, Role.BARBERO, Role.CLIENTE)
   @Patch(':id/cancelar')
-  cancelarCita(@Param('id') id: string, @Request() req: any) {
-    return this.citaService.cancelarCita(+id, req.user);
+  cancelarCita(
+    @Param('id') id: string, 
+    @Request() req: any,
+    @Body('motivo') motivo: string
+  ) {
+    return this.citaService.cancelarCita(+id, req.user, motivo);
   }
 
   @Roles(Role.ADMINISTRADOR, Role.BARBERO)

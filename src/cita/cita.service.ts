@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, Injectable, ForbiddenException, Logger } from '@nestjs/common';
 import { CreateCitaDto } from './dto/create-cita.dto';
 import { UpdateCitaDto } from './dto/update-cita.dto';
 import { UpdateEstadoCitaDto } from './dto/update-estado-cita.dto';
@@ -11,8 +11,12 @@ import { Cita, EstadoCita } from './entities/cita.entity';
 import { Duration } from 'luxon';
 import { MailService } from 'src/mail/mail.service';
 import { Role } from 'src/auth/entities/user.entity';
+import { Cron, CronExpression } from '@nestjs/schedule';
+
 @Injectable()
 export class CitaService {
+  private readonly logger = new Logger(CitaService.name);
+
   constructor(
     @InjectRepository(Servicio)
     private readonly servicioRepository: Repository<Servicio>,
@@ -23,6 +27,97 @@ export class CitaService {
     private readonly horarioBarberoService: HorarioBarberoService,
     private readonly mailService: MailService,
   ) {}
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async autoCompletarCitasYNotificar() {
+    this.logger.debug('Ejecutando Cron Job: Verificando citas para autocompletar...');
+    const ahora = new Date();
+
+    // 1. Encontrar todas las citas que están "agendadas" y evaluarlas
+    const citasAgendadas = await this.citaRepository.find({
+      where: { estado: EstadoCita.AGENDADA },
+      relations: ['cliente', 'barbero', 'servicio']
+    });
+
+    for (const cita of citasAgendadas) {
+      if (!cita.servicio || !cita.hora || !cita.fecha) continue;
+
+      const horaFin = this.sumTimes([cita.hora.toString(), cita.servicio.duracionAprox.toString()]);
+      const horaFinHolgura = this.sumarMinutosAHora(horaFin, 5); // 5 minutos de gracia
+      
+      const fechaString = cita.fecha instanceof Date ? cita.fecha.toISOString().split('T')[0] : String(cita.fecha).split('T')[0];
+      const fechaHoraTermino = new Date(`${fechaString}T${horaFinHolgura}`);
+
+      if (ahora >= fechaHoraTermino) {
+        // La cita ha sobrepasado los 5 minutos de gracia, la completamos.
+        cita.estado = EstadoCita.COMPLETADA;
+        await this.citaRepository.save(cita);
+        this.logger.log(`Cita autocompletada: ID ${cita.id_cita}`);
+      }
+    }
+
+    // 2. Agrupar y enviar correos de las citas completadas que no han sido notificadas
+    const citasCompletadasNoNotificadas = await this.citaRepository.find({
+      where: { 
+        estado: EstadoCita.COMPLETADA, 
+        calificacionEnviada: false 
+      },
+      relations: ['cliente', 'barbero', 'servicio']
+    });
+
+    // Agrupamos por cliente y fecha
+    const enviosPendientes = new Map<string, any>();
+
+    for (const cita of citasCompletadasNoNotificadas) {
+      const fechaString = cita.fecha instanceof Date ? cita.fecha.toISOString().split('T')[0] : String(cita.fecha).split('T')[0];
+      
+      // Verificamos si este cliente tiene OTRAS citas agendadas ESPERANDO HOY
+      const tieneCitasPendientesHoy = await this.citaRepository.count({
+        where: {
+          cliente: { id: cita.cliente.id },
+          fecha: cita.fecha,
+          estado: EstadoCita.AGENDADA
+        }
+      });
+
+      // Si TODO su circuito de citas por hoy terminó:
+      if (tieneCitasPendientesHoy === 0) {
+        const key = `${cita.cliente.id}_${fechaString}`;
+        if (!enviosPendientes.has(key)) {
+          enviosPendientes.set(key, {
+            cliente: cita.cliente,
+            barbero: cita.barbero,
+            fecha: fechaString,
+            servicios: [],
+            citasIds: []
+          });
+        }
+
+        const data = enviosPendientes.get(key);
+        data.servicios.push(cita.servicio.nombre);
+        data.citasIds.push(cita.id_cita);
+      }
+    }
+
+    // Despachar correos consolidados
+    for (const [key, data] of enviosPendientes) {
+      if (data.cliente.email) {
+        await this.mailService.sendPostServiceRating(
+          data.cliente.email,
+          data.cliente.nombre,
+          data.barbero.nombre,
+          data.servicios,
+          data.fecha
+        );
+      }
+
+      // Marcar todas esas citas como notificadas
+      for (const id of data.citasIds) {
+        await this.citaRepository.update(id, { calificacionEnviada: true });
+      }
+      this.logger.log(`Correo de calificación consolidado enviado al cliente ID: ${data.cliente.id}`);
+    }
+  }
 
   async create(createCitaDto: CreateCitaDto) {
   const { clienteId, barberoId, servicioId, hora, fecha, estado } = createCitaDto;
@@ -417,10 +512,17 @@ export class CitaService {
     }
 
     // 2. Validar que la cita esté en estado "agendada" para poder cancelarla
-    if (updateEstadoDto.estado === 'cancelada' && cita.estado !== 'agendada') {
-      throw new BadRequestException(
-        'Solo se pueden cancelar citas con estado "agendada"'
-      );
+    if (updateEstadoDto.estado === 'cancelada') {
+      if (cita.estado !== 'agendada') {
+        throw new BadRequestException(
+          'Solo se pueden cancelar citas con estado "agendada"'
+        );
+      }
+
+      // Validar obligatoriedad del motivo
+      if (!updateEstadoDto.motivo || updateEstadoDto.motivo.trim() === '') {
+        throw new BadRequestException('El motivo de cancelación es obligatorio');
+      }
     }
 
     // 3. Validar tiempo de anticipación (solo para CLIENTE)
@@ -429,9 +531,9 @@ export class CitaService {
       const fechaHoraCita = new Date(`${cita.fecha}T${cita.hora}`);
       const diferenciaHoras = (fechaHoraCita.getTime() - ahora.getTime()) / (1000 * 60 * 60);
 
-      if (diferenciaHoras > 0 && diferenciaHoras < 2) {
+      if (diferenciaHoras < 2) {
         throw new ForbiddenException(
-          'No se puede cancelar una cita con menos de 2 horas de anticipación. ' +
+          'No se puede cancelar una cita con menos de 2 horas de anticipación ni citas del pasado. ' +
           'Por favor, contacta directamente con la barbería.'
         );
       }
@@ -440,6 +542,61 @@ export class CitaService {
     // Actualizar el estado
     cita.estado = updateEstadoDto.estado;
     const citaActualizada = await this.citaRepository.save(cita);
+
+    // Lógica notificativa si se ha cancelado
+    if (updateEstadoDto.estado === 'cancelada' && user) {
+      const fechaStr = cita.fecha instanceof Date ? cita.fecha.toISOString().split('T')[0] : String(cita.fecha);
+      const motivo = updateEstadoDto.motivo || 'Motivo no especificado';
+
+      if (user.role === Role.CLIENTE) {
+        if (cita.barbero.email) {
+          this.mailService.sendCancellationNotificationToBarber(
+            cita.barbero.email,
+            cita.barbero.nombre,
+            cita.cliente.nombre + ' ' + cita.cliente.apellido,
+            cita.servicio.nombre,
+            fechaStr,
+            cita.hora,
+            motivo
+          ).catch(err => console.error('Error enviando cancelación al barbero:', err));
+        }
+      } else if (user.role === Role.BARBERO) {
+        if (cita.cliente.email) {
+          this.mailService.sendCancellationNotificationToClient(
+            cita.cliente.email,
+            cita.cliente.nombre,
+            cita.barbero.nombre,
+            cita.servicio.nombre,
+            fechaStr,
+            cita.hora,
+            motivo
+          ).catch(err => console.error('Error enviando cancelación al cliente:', err));
+        }
+      } else if (user.role === Role.ADMINISTRADOR) {
+        if (cita.barbero.email) {
+           this.mailService.sendCancellationNotificationToBarber(
+             cita.barbero.email,
+             cita.barbero.nombre,
+             cita.cliente.nombre + ' ' + cita.cliente.apellido,
+             cita.servicio.nombre,
+             fechaStr,
+             cita.hora,
+             motivo
+           ).catch(err => console.error('Error enviando cancelación al barbero:', err));
+        }
+        if (cita.cliente.email) {
+           this.mailService.sendCancellationNotificationToClient(
+             cita.cliente.email,
+             cita.cliente.nombre,
+             'La Administración',
+             cita.servicio.nombre,
+             fechaStr,
+             cita.hora,
+             motivo
+           ).catch(err => console.error('Error enviando cancelación al cliente:', err));
+        }
+      }
+    }
 
     return {
       success: true,
@@ -453,8 +610,8 @@ export class CitaService {
    * @param id - ID de la cita
    * @returns Cita cancelada
    */
-  async cancelarCita(id: number, user?: any) {
-    return this.actualizarEstado(id, { estado: EstadoCita.CANCELADA }, user);
+  async cancelarCita(id: number, user?: any, motivo?: string) {
+    return this.actualizarEstado(id, { estado: EstadoCita.CANCELADA, motivo }, user);
   }
 
   /**

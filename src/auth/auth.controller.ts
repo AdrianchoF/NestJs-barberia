@@ -108,9 +108,10 @@ export class AuthController {
 
       return res.redirect(redirectUrl);
     } catch (error) {
-      // Si la cuenta está desactivada, el error vendrá con el mensaje de penalización
+      // Si la cuenta está desactivada, el error vendrá con el mensaje de penalización (401)
       const errorMessage = error.response?.message || error.message || 'Error de autenticación';
-      return res.redirect(`http://localhost:5173/login?error=account_deactivated&message=${encodeURIComponent(errorMessage)}`);
+      const errorType = (error.status === 401) ? 'account_deactivated' : 'internal_error';
+      return res.redirect(`http://localhost:5173/login?error=${errorType}&message=${encodeURIComponent(errorMessage)}`);
     }
   }
 
