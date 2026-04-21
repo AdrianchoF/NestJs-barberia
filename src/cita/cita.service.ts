@@ -181,7 +181,8 @@ export class CitaService {
       }
 
       // Buscar otros barberos en el mismo horario
-      const otrosBarberosDisponibles = await this.obtenerBarberosDisponiblesParaCita(fecha, hora, [idServicio]);
+      const fechaStr = fecha instanceof Date ? fecha.toISOString().split('T')[0] : fecha;
+      const otrosBarberosDisponibles = await this.obtenerBarberosDisponiblesParaCita(fechaStr, hora, [idServicio]);
 
       return {
         disponible: false,
@@ -271,13 +272,16 @@ export class CitaService {
   };
 }
 
-  async obtenerBarberosDisponiblesParaCita(fecha: Date, hora: string, servicioIds: number[]) {
+  async obtenerBarberosDisponiblesParaCita(fecha: string, hora: string, servicioIds: number[]) {
     try {
       console.log('=== DEBUG OBTENER BARBEROS DISPONIBLES ===');
       console.log('Parámetros recibidos:', { fecha, hora, servicioIds });
 
+      // Convertir fecha string a Date
+      const fechaDate = this.normalizeFecha(fecha);
+
       // 1. Extraer día de la semana de la fecha
-      const diaSemana = this.extraerDiaSemanaDelaFecha(fecha);
+      const diaSemana = this.extraerDiaSemanaDelaFecha(fechaDate);
       console.log('Día de la semana calculado:', diaSemana);
       
       // 2. Obtener duración TOTAL de todos los servicios
@@ -298,29 +302,31 @@ export class CitaService {
       const horaFin = this.sumTimes([hora.toString(), totalDurationStr]); 
       console.log('Hora inicio:', horaFormateada, 'Hora fin:', horaFin);
 
-      // 4. Obtener barberos que tienen franjas disponibles para este día y hora
-      const barberosConFranjas = await this.horarioBarberoService.buscarporDiayHora(diaSemana, horaFormateada);
-      console.log('Barberos con franjas disponibles:', barberosConFranjas.length);
-      
-      // 5. Filtrar barberos que NO tengan citas que se solapen
+      // 4. Obtener horarios que permiten comenzar y terminar la cita dentro de la jornada
+      const horariosDisponibles = await this.horarioBarberoService.buscarHorariosPorDiaYHoraYFin(diaSemana, horaFormateada, horaFin);
+      console.log('Horarios disponibles para el rango completo:', horariosDisponibles.length);
+
+      // 5. Filtrar barberos que NO tengan citas o pausas que se solapen
       const barberosDisponibles: any[] = [];
+      const barberoIds = new Set<number>();
 
-      for (const data of barberosConFranjas) {
-        // data.barbero contiene el objeto User completo gracias al join en horarioBarberoService
-        const barbero = data; // En este servicio, buscarporDiayHora devuelve barberos únicos directamente
+      for (const horario of horariosDisponibles) {
+        const barbero = horario.barbero;
+        if (!barbero || barberoIds.has(barbero.id)) continue;
+
         const barberoId = barbero.id;
-
         const tieneCitasSolapadas = await this.barberoTieneCitasSolapadas(
           barberoId,
-          fecha,
+          fechaDate,
           horaFormateada,
           horaFin
         );
 
-        console.log(`Barbero ${barberoId} tiene citas solapadas:`, tieneCitasSolapadas);
+        console.log(`Barbero ${barberoId} tiene citas o pausas solapadas:`, tieneCitasSolapadas);
 
         if (!tieneCitasSolapadas) {
           barberosDisponibles.push(barbero);
+          barberoIds.add(barberoId);
         }
       }
 
@@ -348,7 +354,7 @@ export class CitaService {
       return {
         disponible: false,
         barbero_id: null,
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Error desconocido',
         barberos_disponibles: [],
         total_disponibles: 0
       };
@@ -370,12 +376,12 @@ export class CitaService {
       totalDuration = totalDuration.plus(duration);
     }
 
-    // Formatea el resultado como hh:mm:ss
+    // Formatea el resultado como HH:mm:ss
     const hours = Math.floor(totalDuration.as('hours'));
     const minutes = totalDuration.minutes % 60;
     const seconds = totalDuration.seconds % 60;
 
-    return `${hours}:${minutes}:${seconds}`;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   }
 
   /**
@@ -386,32 +392,48 @@ export class CitaService {
    * @param horaFin - Hora de fin del rango
    * @returns true si hay solapamiento, false si no hay conflictos
    */
+  private normalizeFecha(fecha: Date | string): Date {
+    if (typeof fecha === 'string') {
+      return new Date(`${fecha}T00:00:00`);
+    }
+    return fecha;
+  }
+
   private async barberoTieneCitasSolapadas(
     idBarbero: number,
-    fecha: Date,
+    fecha: Date | string,
     horaInicio: string,
     horaFin: string
   ): Promise<boolean> {
+    const fechaNormalizada = this.normalizeFecha(fecha);
     const citasDelDia = await this.citaRepository
       .createQueryBuilder('cita')
       .innerJoinAndSelect('cita.servicio', 'servicio')
       .where('cita.Id_RolBarbero = :idBarbero', { idBarbero })
-      .andWhere('cita.fecha = :fecha', { fecha })
+      .andWhere('cita.fecha = :fecha', { fecha: fechaNormalizada })
+      .andWhere('cita.estado != :estadoCancelada', { estadoCancelada: EstadoCita.CANCELADA })
       .getMany();
 
     // Verificar si alguna cita existente se solapa con el nuevo rango
     for (const cita of citasDelDia) {
       const citaHoraInicio = cita.hora.toString();
-
-      const times = [citaHoraInicio.toString(), cita.servicio.duracionAprox.toString()];
-      const citaHoraFin = this.sumTimes(times); 
-
-      //const citaHoraFin = this.sumarMinutosAHora(citaHoraInicio, cita.servicio.duracionAprox);
+      const citaHoraFin = this.sumTimes([citaHoraInicio.toString(), cita.servicio.duracionAprox.toString()]);
 
       if (this.verificarSolapamientoHorarios(horaInicio, horaFin, citaHoraInicio, citaHoraFin)) {
         return true; // Hay solapamiento
       }
     }
+
+    // Verificar solapamiento con pausas activas
+    const pausasActivas = await this.horarioBarberoService.obtenerPausasActivas(idBarbero, fechaNormalizada);
+    for (const pausa of pausasActivas) {
+      const pausaInicio = pausa.hora_inicio;
+      const pausaFin = pausa.hora_fin;
+      if (this.verificarSolapamientoHorarios(horaInicio, horaFin, pausaInicio, pausaFin)) {
+        return true; // Hay solapamiento con pausa
+      }
+    }
+
     return false; // No hay conflictos
   }
 
@@ -475,10 +497,16 @@ export class CitaService {
    * @param fecha - Fecha en formato YYYY-MM-DD
    * @returns Día de la semana como enum DiaSemana
    */
-  private extraerDiaSemanaDelaFecha(fecha: Date): DiaSemana {
-    const fechaObj = new Date(fecha + 'T00:00:00'); // Agregar tiempo para evitar problemas de zona horaria
+  private extraerDiaSemanaDelaFecha(fecha: Date | string): DiaSemana {
+    let fechaObj: Date;
+    if (typeof fecha === 'string') {
+      fechaObj = new Date(`${fecha}T00:00:00`);
+    } else {
+      fechaObj = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    }
+
     const numeroDia = fechaObj.getDay(); // 0 = Domingo, 1 = Lunes, etc.
-    
+
     const mapeosDias: Record<number, DiaSemana> = {
       1: DiaSemana.LUNES,
       2: DiaSemana.MARTES,
@@ -640,25 +668,36 @@ export class CitaService {
  */
   async obtenerHorasOcupadasBarbero(barberoId: number, fecha: string) {
       try {
+      const fechaNormalizada = this.normalizeFecha(fecha);
       // Obtener todas las citas del barbero en esa fecha
       const citas = await this.citaRepository
         .createQueryBuilder('cita')
         .innerJoinAndSelect('cita.servicio', 'servicio')
         .where('cita.Id_RolBarbero = :barberoId', { barberoId })
-        .andWhere('cita.fecha = :fecha', { fecha })
-        .andWhere('cita.estado != :estadoCancelada', { estadoCancelada: 'cancelada' }) // Excluir canceladas
+        .andWhere('cita.fecha = :fecha', { fecha: fechaNormalizada })
+        .andWhere('cita.estado != :estadoCancelada', { estadoCancelada: EstadoCita.CANCELADA }) // Excluir canceladas
         .getMany();
 
-      const horasOcupadas = citas.map(cita => {
-        const hora_inicio = cita.hora.toString();
-        const hora_fin = this.sumTimes([hora_inicio, cita.servicio.duracionAprox.toString()]);
-        
-        return {
-          hora_inicio,
-          hora_fin,
-          citaId: cita.id_cita
-        };
-      });
+      const pausas = await this.horarioBarberoService.obtenerPausasActivas(barberoId, fechaNormalizada);
+
+      const horasOcupadas = [
+        ...citas.map(cita => {
+          const hora_inicio = cita.hora.toString();
+          const hora_fin = this.sumTimes([hora_inicio, cita.servicio.duracionAprox.toString()]);
+          return {
+            hora_inicio,
+            hora_fin,
+            citaId: cita.id_cita,
+            tipo: 'cita'
+          };
+        }),
+        ...pausas.map(pausa => ({
+          hora_inicio: pausa.hora_inicio,
+          hora_fin: pausa.hora_fin,
+          citaId: null,
+          tipo: 'pausa'
+        }))
+      ].sort((a, b) => this.horaAMinutos(a.hora_inicio) - this.horaAMinutos(b.hora_inicio));
 
       return {
         barberoId,

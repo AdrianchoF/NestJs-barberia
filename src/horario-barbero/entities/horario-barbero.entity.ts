@@ -10,6 +10,17 @@ export enum DiaSemana {
     SABADO = 'sabado',
     DOMINGO = 'domingo'
 }
+
+export interface PausaBarbero {
+    id: string; // UUID para identificar
+    tipo: 'recurrente' | 'ocasional';
+    fecha?: string; // YYYY-MM-DD, solo para ocasional
+    hora_inicio: string; // HH:MM
+    hora_fin: string; // HH:MM
+    motivo: string;
+    todos_los_dias?: boolean; // Solo para recurrente
+}
+
 @Entity()
 export class HorarioBarbero {
     @PrimaryGeneratedColumn({ name: 'Id_HorarioBarbero' })
@@ -31,4 +42,7 @@ export class HorarioBarbero {
 
     @Column({ type: 'time' })
     hora_fin: string;
+
+    @Column({ type: 'json', nullable: true })
+    pausas: PausaBarbero[];
 }

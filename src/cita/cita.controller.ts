@@ -39,7 +39,7 @@ export class CitaController {
   @Public()
   @Get('disponibles/:fecha/:hora/:servicios')
   findhorario(
-    @Param('fecha') fecha: Date, 
+    @Param('fecha') fecha: string, 
     @Param('hora') hora: string, 
     @Param('servicios') servicios: string
   ) {
@@ -92,4 +92,4 @@ export class CitaController {
   remove(@Param('id') id: string) {
     return this.citaService.remove(+id);
   }
-}
+}
