@@ -188,7 +188,7 @@ export class HorarioBarberoService {
 
   async remove(id: number, user?: any) {
     const horario = await this.findOne(id);
-    
+
     // Validar propiedad
     if (user && user.role !== Role.ADMINISTRADOR) {
       if (horario.barbero.id !== user.id) {
@@ -278,7 +278,7 @@ export class HorarioBarberoService {
         const nuevaFin = new Date(`1970-01-01 ${nuevaPausa.hora_fin}`);
 
         if ((nuevaInicio < existingFin && nuevaFin > existingInicio) ||
-            (existingInicio < nuevaFin && existingFin > nuevaInicio)) {
+          (existingInicio < nuevaFin && existingFin > nuevaInicio)) {
           throw new BadRequestException('Esta pausa se solapa con otra pausa existente');
         }
       }
@@ -319,7 +319,7 @@ export class HorarioBarberoService {
       const nuevaFin = new Date(`1970-01-01 ${nuevaPausa.hora_fin}`);
 
       if ((nuevaInicio < citaFin && nuevaFin > citaInicio) ||
-          (citaInicio < nuevaFin && citaFin > nuevaInicio)) {
+        (citaInicio < nuevaFin && citaFin > nuevaInicio)) {
         throw new BadRequestException(
           `No se puede crear pausa: hay una cita existente que se solapa (${cita.hora} - ${this.sumarTiempo(cita.hora, cita.servicio?.duracionAprox || '00:30')})`
         );
@@ -443,7 +443,7 @@ export class HorarioBarberoService {
   }
 
   // Método para obtener huecos libres en un día para un barbero
-  async obtenerHuecosLibres(barberoId: number, fecha: Date, duracionMinutos: number = 60): Promise<{hora_inicio: string, hora_fin: string}[]> {
+  async obtenerHuecosLibres(barberoId: number, fecha: Date, duracionMinutos: number = 60): Promise<{ hora_inicio: string, hora_fin: string }[]> {
     const diaSemana = this.getDiaSemana(fecha);
     const horarios = await this.horarioRepository.find({
       where: { barbero: { id: barberoId }, Dia_semana: diaSemana },
@@ -452,7 +452,7 @@ export class HorarioBarberoService {
 
     if (horarios.length === 0) return [];
 
-    const huecos: {hora_inicio: string, hora_fin: string}[] = [];
+    const huecos: { hora_inicio: string, hora_fin: string }[] = [];
     const fechaStr = fecha.toISOString().split('T')[0];
 
     for (const horario of horarios) {
@@ -545,13 +545,13 @@ export class HorarioBarberoService {
         for (const pausa of horario.pausas) {
           // Crear clave de deduplicación basada en hora_inicio, hora_fin, tipo y todos_los_dias
           const clave = `${pausa.hora_inicio}-${pausa.hora_fin}-${pausa.tipo}-${pausa.todos_los_dias}`;
-          
+
           // Para pausas recurrentes con todos_los_dias, solo agregamos una vez
           if (pausa.todos_los_dias && pausasYaAgregadas.has(clave)) {
             continue;
           }
 
-          const diasAplicables = pausa.todos_los_dias ? 
+          const diasAplicables = pausa.todos_los_dias ?
             'Todos los días' :
             horario.Dia_semana;
 
