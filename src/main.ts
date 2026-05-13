@@ -17,7 +17,7 @@ async function bootstrap() {
 
   // Habilitar CORS para el frontend (Vite: 5173, Vue CLI: 8080)
   app.enableCors({
-    origin: 'proyecto-barberia-psi.vercel.app',
+    origin: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
