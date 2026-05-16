@@ -17,7 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // 2. Valida que exista. Si no, lanza un error.
     if (!secret) {
-      throw new Error('JWT secret key is not defined in the configuration. Make sure to set the "hola" environment variable.');
+      throw new Error('JWT secret key is not defined in the configuration. Make sure to set the "JWT_SECRET" environment variable.');
     }
 
     // 3. Ahora TypeScript sabe que 'secret' es un string
