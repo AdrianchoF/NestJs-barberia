@@ -54,7 +54,7 @@ export class AuthController {
     res.cookie('jwt', token.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production', // true en producción con https
-      sameSite: 'strict',
+      sameSite: 'none', // para permitir la redirección desde el frontend
       maxAge: 1000 * 60 * 60, // 1 hora
     });
 
@@ -97,7 +97,7 @@ export class AuthController {
       res.cookie('jwt', accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', // Cambiamos a lax para permitir la redirección desde Google
+        sameSite: 'none', // Cambiamos a none para permitir la redirección desde Google
         maxAge: 1000 * 60 * 60, // 1 hora
       });
 
@@ -139,4 +139,4 @@ export class AuthController {
     return this.authService.remove(+id);
   }
 
-}
+}
