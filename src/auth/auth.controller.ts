@@ -102,16 +102,17 @@ export class AuthController {
       });
 
       // Redirigimos al frontend según el rol
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const redirectUrl = (user.Role === Role.ADMINISTRADOR || user.Role === Role.BARBERO)
-        ? 'http://localhost:5173/dashboard'
-        : 'http://localhost:5173';
+        ? `${frontendUrl}/dashboard`
+        : frontendUrl; // Usuarios normales van a la home
 
       return res.redirect(redirectUrl);
     } catch (error) {
-      // Si la cuenta está desactivada, el error vendrá con el mensaje de penalización (401)
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const errorMessage = error.response?.message || error.message || 'Error de autenticación';
       const errorType = (error.status === 401) ? 'account_deactivated' : 'internal_error';
-      return res.redirect(`http://localhost:5173/login?error=${errorType}&message=${encodeURIComponent(errorMessage)}`);
+      return res.redirect(`${frontendUrl}/login?error=${errorType}&message=${encodeURIComponent(errorMessage)}`);
     }
   }
 
