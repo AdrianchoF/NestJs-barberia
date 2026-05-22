@@ -23,8 +23,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // 3. Ahora TypeScript sabe que 'secret' es un string
     super({
       jwtFromRequest: (req: Request) => {
-        if (!req.cookies || !req.cookies['jwt']) return null;
-        return req.cookies['jwt']; // 🔥 Aquí sacamos el token desde la cookie
+        // Primero intenta leer la cookie
+        if (req.cookies && req.cookies['jwt']) {
+          return req.cookies['jwt'];
+        }
+        // Si no hay cookie, intenta leer el header Authorization
+        const authHeader = req.headers['authorization'];
+        if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+          return authHeader.substring(7); // Elimina 'Bearer ' para obtener solo el token
+        }
+        return null; // No se encontró token
       },
       ignoreExpiration: false,
       secretOrKey: secret,
