@@ -105,7 +105,7 @@ export class AuthController {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const redirectUrl = (user.Role === Role.ADMINISTRADOR || user.Role === Role.BARBERO || user.Role === Role.SUPER_ADMINISTRADOR)
         ? `${frontendUrl}/dashboard?token=${accessToken}`
-        : `${frontendUrl}/token=${accessToken}`;
+        : `${frontendUrl}/?token=${accessToken}`;
 
       return res.redirect(redirectUrl);
     } catch (error) {
