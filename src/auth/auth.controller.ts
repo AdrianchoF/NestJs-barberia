@@ -94,18 +94,18 @@ export class AuthController {
       const { accessToken, user } = await this.authService.loginWithGoogle(googleUser);
 
       // Guardamos el token en una cookie httpOnly (igual que en login normal)
-      res.cookie('jwt', accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'none', // Cambiamos a none para permitir la redirección desde Google
-        maxAge: 1000 * 60 * 60, // 1 hora
-      });
+      // res.cookie('jwt', accessToken, {
+      //   httpOnly: true,
+      //   secure: process.env.NODE_ENV === 'production',
+      //   sameSite: 'none', // Cambiamos a none para permitir la redirección desde Google
+      //   maxAge: 1000 * 60 * 60, // 1 hora
+      // });
 
       // Redirigimos al frontend según el rol
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      const redirectUrl = (user.Role === Role.ADMINISTRADOR || user.Role === Role.BARBERO)
-        ? `${frontendUrl}/dashboard`
-        : frontendUrl; // Usuarios normales van a la home
+      const redirectUrl = (user.Role === Role.ADMINISTRADOR || user.Role === Role.BARBERO || user.Role === Role.SUPER_ADMINISTRADOR)
+        ? `${frontendUrl}/dashboard?token=${accessToken}`
+        : `${frontendUrl}/token=${accessToken}`;
 
       return res.redirect(redirectUrl);
     } catch (error) {
